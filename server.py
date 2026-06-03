@@ -195,9 +195,20 @@ def api_save_permissions():
         data      = request.json
         row_index = data["rowIndex"]
         perms     = data["perms"]
-        sheet     = get_sheet()
+        sheet = get_sheet()
+        # Alle 14 Berechtigungen in einem batch update → viel schneller
+        updates = []
         for p in PERMISSIONS:
-            sheet.update_cell(row_index, p["col"], "✓" if perms.get(p["key"]) else "")
+            val = "✓" if perms.get(p["key"]) else "✗"
+            col_letter = chr(64 + p["col"]) if p["col"] <= 26 else chr(64 + (p["col"]-1)//26) + chr(65 + (p["col"]-1)%26)
+            updates.append({
+                "range": f"{SHEET_NAME}!{col_letter}{row_index}",
+                "values": [[val]]
+            })
+        sheet.spreadsheet.values_batch_update({
+            "valueInputOption": "RAW",
+            "data": updates
+        })
         print(f"[{datetime.now():%d.%m.%Y %H:%M}] {session['discord_user']['username']} → Berechtigungen Zeile {row_index}")
         return jsonify({"ok": True})
     except Exception as e:
@@ -213,19 +224,27 @@ def api_update_member():
         row_index = data["rowIndex"]
         sheet     = get_sheet()
 
-        if "name"     in data: sheet.update_cell(row_index, COL["NAME"],     data["name"])
-        if "codename" in data: sheet.update_cell(row_index, COL["CODENAME"], data["codename"])
-        if "rang"     in data: sheet.update_cell(row_index, COL["RANG"],     data["rang"])
-        if "date"     in data: sheet.update_cell(row_index, COL["DATE"],     data["date"])
-        if "urlaub"   in data: sheet.update_cell(row_index, COL["URLAUB"],   data["urlaub"])
+        # Batch update alle Felder auf einmal
+        updates = []
+        col_map = {"name": COL["NAME"], "codename": COL["CODENAME"], "rang": COL["RANG"],
+                   "date": COL["DATE"], "urlaub": COL["URLAUB"]}
+        for field, col in col_map.items():
+            if field in data:
+                col_letter = chr(64 + col) if col <= 26 else chr(64 + (col-1)//26) + chr(65 + (col-1)%26)
+                updates.append({"range": f"{SHEET_NAME}!{col_letter}{row_index}", "values": [[data[field]]]})
+        if updates:
+            sheet.spreadsheet.values_batch_update({"valueInputOption": "RAW", "data": updates})
 
-        # If rang changed → update default permissions too
+        # If rang changed → update default permissions too (batch)
         if "rang" in data and data.get("updatePerms"):
             rang = data["rang"]
             default_cols = RANG_DEFAULTS.get(rang, [])
+            perm_updates = []
             for p in PERMISSIONS:
-                val = "✓" if p["col"] in default_cols else ""
-                sheet.update_cell(row_index, p["col"], val)
+                val = "✓" if p["col"] in default_cols else "✗"
+                col_letter = chr(64 + p["col"]) if p["col"] <= 26 else chr(64 + (p["col"]-1)//26) + chr(65 + (p["col"]-1)%26)
+                perm_updates.append({"range": f"{SHEET_NAME}!{col_letter}{row_index}", "values": [[val]]})
+            sheet.spreadsheet.values_batch_update({"valueInputOption": "RAW", "data": perm_updates})
 
         print(f"[{datetime.now():%d.%m.%Y %H:%M}] {session['discord_user']['username']} → Member update Zeile {row_index}")
         return jsonify({"ok": True})
