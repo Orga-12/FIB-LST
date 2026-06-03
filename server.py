@@ -52,9 +52,9 @@ PERMISSIONS = [
 ]
 
 RANG_ORDER = [
-    "FIB Director", "Director of Integrity", "Curator",
+    "FIB-Director", "Director of Integrity", "Curator",
     "Chief of FIBCO", "Deputy Chief of FIBCO", "Supervisor",
-    "Senior Mitglied", "Mitglied", "Trainee",
+    "Senior Mitglied", "Counsel General", "Mitglied", "FIBCO Veteran", "Trainee",
 ]
 
 RANG_DEFAULTS = {
