@@ -160,6 +160,7 @@ def api_members():
         sheet = get_sheet()
         rows  = sheet.get_all_values()
         members = []
+        print(f"DEBUG: Sheet name={SHEET_NAME}, rows loaded={len(rows)}, spreadsheet_id={SPREADSHEET_ID}")
         for i, row in enumerate(rows[DATA_START - 1:], start=DATA_START):
             while len(row) < 27:
                 row.append("")
@@ -181,7 +182,9 @@ def api_members():
             })
         return jsonify(members)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        import traceback
+        print(f"ERROR /api/members: {traceback.format_exc()}")
+        return jsonify({"error": str(e), "detail": traceback.format_exc()}), 500
 
 # ─── Save Permissions ─────────────────────────────────────────────────────────
 @app.route("/api/permissions", methods=["POST"])
