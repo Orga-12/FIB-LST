@@ -110,6 +110,9 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 .permrow.on .pname{color:var(--text)}
 .permrow.off .pname{color:var(--muted)}
 .cbadge{font-family:var(--mono);font-size:.58rem;padding:.08rem .38rem;border-radius:3px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);color:var(--yellow)}
+.perm-status{font-family:var(--mono);font-size:.85rem;font-weight:700;min-width:18px;text-align:center;flex-shrink:0}
+.perm-yes{color:var(--green)}
+.perm-no{color:var(--red);opacity:.7}
 .edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;padding:1.1rem}
 @media(max-width:600px){.edit-grid{grid-template-columns:1fr}}
 .field{display:flex;flex-direction:column;gap:.35rem}
@@ -180,7 +183,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 .rang-preview{margin-top:.8rem;padding:.7rem;background:#0a0d14;border:1px solid var(--border);border-radius:7px;font-size:.78rem;color:var(--muted)}
 .rang-preview strong{color:var(--text)}
 #add-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
-#modal-overlay.show{display:flex}
+#modal-overlay.show{visibility:visible;opacity:1;pointer-events:all}
 .modal{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:1.8rem;max-width:360px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.5)}
 .modal h3{font-family:var(--head);font-size:1.2rem;font-weight:700;color:#fff;margin-bottom:.5rem}
 .modal p{font-size:.83rem;color:var(--muted);margin-bottom:1.4rem;line-height:1.6}
@@ -264,16 +267,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
   </div>
 </div>
 
-<div id="modal-overlay">
-  <div class="modal">
-    <h3>🗑️ Mitglied entfernen</h3>
-    <p>Möchtest du <span class="modal-name" id="modal-name"></span> wirklich entfernen? Diese Aktion kann nicht rückgängig gemacht werden.</p>
-    <div class="modal-btns">
-      <button class="mbtn mbtn-cancel" onclick="closeModal()">Abbrechen</button>
-      <button class="mbtn mbtn-del"    onclick="confirmDelete()">Entfernen</button>
-    </div>
-  </div>
-</div>
+
 
 <div id="topbar">
   <div class="brand">
@@ -557,7 +551,7 @@ function renderPerms(){
     const on=selected.perms[p.key],chg=!!dirty[p.key];
     const row=document.createElement("div");
     row.className=`permrow ${on?"on":"off"}`;
-    row.innerHTML=`<div class="tog ${on?"on":"off"}"><div class="knob"></div></div><span class="pcol">${p.key}</span><span class="pname">${p.name}</span>${chg?`<span class="cbadge">geändert</span>`:""}`;
+    row.innerHTML=`<div class="tog ${on?"on":"off"}"><div class="knob"></div></div><span class="pcol">${p.key}</span><span class="pname">${p.name}</span><span class="perm-status ${on?"perm-yes":"perm-no"}">${on?"✓":"✗"}</span>${chg?`<span class="cbadge">geändert</span>`:""}`;
     row.onclick=()=>togglePerm(p.key);
     el.appendChild(row);
   });
@@ -830,5 +824,15 @@ document.getElementById("rang-filter").addEventListener("change",renderSidebar);
 
 boot();
 </script>
+<div id="modal-overlay">
+  <div class="modal">
+    <h3>🗑️ Mitglied entfernen</h3>
+    <p>Möchtest du <span class="modal-name" id="modal-name"></span> wirklich entfernen? Diese Aktion kann nicht rückgängig gemacht werden.</p>
+    <div class="modal-btns">
+      <button class="mbtn mbtn-cancel" onclick="closeModal()">Abbrechen</button>
+      <button class="mbtn mbtn-del"    onclick="confirmDelete()">Entfernen</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
