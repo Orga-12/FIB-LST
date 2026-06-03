@@ -1,17 +1,3 @@
-# ─── Active Users Tracking ────────────────────────────────────────────────────
-active_users = {}  # {username: last_seen_timestamp}
-
-@app.before_request
-def track_active():
-    if is_logged_in():
-        user = session["discord_user"]["username"]
-        active_users[user] = datetime.now()
-        # Entferne inaktive Nutzer (>5 Min)
-        cutoff = datetime.now()
-        inactive = [u for u, t in active_users.items() if (cutoff - t).seconds > 300]
-        for u in inactive:
-            del active_users[u]
-
 import os, json, secrets, requests, tempfile
 from flask import Flask, redirect, request, session, send_file, jsonify, abort
 from google.oauth2.service_account import Credentials
@@ -33,6 +19,19 @@ CREDENTIALS_FILE = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", "credentials
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET", secrets.token_hex(32))
+
+# ─── Active Users Tracking ────────────────────────────────────────────────────
+active_users = {}
+
+@app.before_request
+def track_active():
+    if is_logged_in():
+        user = session["discord_user"]["username"]
+        active_users[user] = datetime.now()
+        cutoff = datetime.now()
+        inactive = [u for u, t in active_users.items() if (cutoff - t).seconds > 300]
+        for u in inactive:
+            del active_users[u]
 
 # ─── Config ───────────────────────────────────────────────────────────────────
 DISCORD_CLIENT_ID     = os.getenv("DISCORD_CLIENT_ID")
