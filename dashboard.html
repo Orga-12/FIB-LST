@@ -71,7 +71,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 .eicon{width:60px;height:60px;border-radius:50%;background:var(--s2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:1.6rem}
 #empty h3{font-family:var(--head);font-size:.95rem;color:#1e2a3a;font-weight:700}
 #empty p{font-size:.78rem;color:#131c28}
-#einner{padding:1.2rem;max-width:900px}
+#einner{padding:1.5rem;max-width:860px;margin:0 auto;width:100%}
 .hero{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:1.1rem 1.4rem;display:flex;align-items:center;gap:1.1rem;margin-bottom:1rem;flex-wrap:wrap;position:relative;overflow:hidden}
 .havatar{width:48px;height:48px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:var(--head);font-size:1.4rem;font-weight:700;flex-shrink:0}
 .hmeta{flex:1;min-width:0}
@@ -82,7 +82,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 .hright{text-align:right;flex-shrink:0}
 .hnum{font-family:var(--head);font-size:2rem;font-weight:700;line-height:1}
 .hlbl{font-family:var(--mono);font-size:.58rem;color:var(--muted)}
-.tabs{display:flex;gap:0;margin-bottom:1rem;background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:.3rem;overflow:hidden}
+.tabs{display:flex;gap:0;margin-bottom:1rem;background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:.3rem;overflow-x:auto;flex-wrap:wrap}
 .tab{padding:.45rem 1.1rem;border-radius:6px;font-family:var(--head);font-size:.85rem;font-weight:600;letter-spacing:.04em;cursor:pointer;transition:all .15s;color:var(--muted);border:none;background:transparent}
 .tab:hover{color:var(--text)}
 .tab.active{background:var(--s3);color:#fff;box-shadow:0 1px 4px rgba(0,0,0,.3)}
@@ -183,17 +183,17 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 .rang-preview{margin-top:.8rem;padding:.7rem;background:#0a0d14;border:1px solid var(--border);border-radius:7px;font-size:.78rem;color:var(--muted)}
 .rang-preview strong{color:var(--text)}
 #add-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
-#modal-overlay.show{visibility:visible;opacity:1;pointer-events:all}
-.modal{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:1.8rem;max-width:360px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.5)}
-.modal h3{font-family:var(--head);font-size:1.2rem;font-weight:700;color:#fff;margin-bottom:.5rem}
-.modal p{font-size:.83rem;color:var(--muted);margin-bottom:1.4rem;line-height:1.6}
-.modal-name{color:var(--red);font-weight:600}
-.modal-btns{display:flex;gap:.6rem;justify-content:flex-end}
-.mbtn{padding:.55rem 1.2rem;border-radius:7px;font-family:var(--head);font-size:.88rem;font-weight:700;cursor:pointer;border:1px solid;transition:all .15s;letter-spacing:.04em}
-.mbtn-cancel{background:var(--s2);border-color:var(--border2);color:var(--muted)}
-.mbtn-cancel:hover{border-color:var(--border);color:var(--text)}
-.mbtn-del{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.3);color:var(--red)}
-.mbtn-del:hover{background:rgba(239,68,68,.22);border-color:var(--red)}
+
+
+
+
+
+
+
+
+
+
+
 #toast{position:fixed;bottom:1.2rem;right:1.2rem;z-index:9998;background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:.65rem 1.1rem;font-family:var(--mono);font-size:.75rem;display:flex;align-items:center;gap:.5rem;transform:translateY(16px);opacity:0;transition:all .25s;pointer-events:none;box-shadow:0 6px 24px rgba(0,0,0,.4)}
 #toast.show{transform:translateY(0);opacity:1}
 #toast.ok{border-color:rgba(34,197,94,.3);color:var(--green)}
@@ -380,7 +380,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
               <h4>Mitglied entfernen</h4>
               <p>Entfernt das Mitglied komplett aus der Mitarbeiterliste.<br>Diese Aktion kann nicht rückgängig gemacht werden.</p>
             </div>
-            <button class="del-btn" onclick="openModal()">🗑️ Entfernen</button>
+            <button class="del-btn" onclick="confirmDelete()">🗑️ Entfernen</button>
           </div>
         </div>
       </div>
@@ -667,10 +667,9 @@ async function save(type){
 }
 
 // ── Delete ────────────────────────────────────────────────────────────────────
-function openModal(){document.getElementById("modal-name").textContent=selected.name;document.getElementById("modal-overlay").classList.add("show");}
-function closeModal(){document.getElementById("modal-overlay").classList.remove("show");}
+
+
 async function confirmDelete(){
-  closeModal();
   try{
     const res=await fetch("/api/member/delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({rowIndex:selected.rowIndex})});
     if(res.status===401){window.location="/";return;}
@@ -824,15 +823,6 @@ document.getElementById("rang-filter").addEventListener("change",renderSidebar);
 
 boot();
 </script>
-<div id="modal-overlay">
-  <div class="modal">
-    <h3>🗑️ Mitglied entfernen</h3>
-    <p>Möchtest du <span class="modal-name" id="modal-name"></span> wirklich entfernen? Diese Aktion kann nicht rückgängig gemacht werden.</p>
-    <div class="modal-btns">
-      <button class="mbtn mbtn-cancel" onclick="closeModal()">Abbrechen</button>
-      <button class="mbtn mbtn-del"    onclick="confirmDelete()">Entfernen</button>
-    </div>
-  </div>
-</div>
+
 </body>
 </html>
