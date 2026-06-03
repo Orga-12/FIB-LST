@@ -474,13 +474,22 @@ def api_member_add():
         if must_insert:
             sheet.insert_row([], insert_at)
 
-        # Format von der Zeile darüber kopieren
+        # Format des neuen Mitglieds von der Zeile darüber kopieren
         if insert_at - 1 >= DATA_START:
             try:
                 creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES_SHEETS)
                 copy_row_format_srv(SPREADSHEET_ID, insert_at - 1, insert_at, creds)
             except Exception as fmt_err:
-                print(f"⚠️ Format copy: {fmt_err}")
+                print(f"⚠️ Format Mitglied: {fmt_err}")
+
+        # Trennzeile nach dem neuen Mitglied einfügen (Format von Zeile 42)
+        try:
+            trenn_zeile = insert_at + 1
+            sheet.insert_row([], trenn_zeile)
+            creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES_SHEETS)
+            copy_row_format_srv(SPREADSHEET_ID, 42, trenn_zeile, creds)
+        except Exception as fmt_err:
+            print(f"⚠️ Trennzeile: {fmt_err}")
 
         # Formulas for DN and ID
         formel_dn = f'=WENN(C{insert_at}=""; ""; WENNFEHLER(FILTER(Tabellenblatt37!E12:E295; Tabellenblatt37!B12:B295 = C{insert_at}); "/"))'
