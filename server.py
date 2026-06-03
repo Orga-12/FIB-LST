@@ -52,13 +52,13 @@ PERMISSIONS = [
 ]
 
 RANG_ORDER = [
-    "FIB-Director", "Director of Integrity", "Curator",
+    "FIB Director", "Director of Integrity", "Curator",
     "Chief of FIBCO", "Deputy Chief of FIBCO", "Supervisor",
-    "Senior Mitglied", "Mitglied", "FIBCO Veteran", "Trainee",
+    "Senior Mitglied", "Mitglied", "Trainee",
 ]
 
 RANG_DEFAULTS = {
-    "FIB-Director":          list(range(14, 28)),
+    "FIB Director":          list(range(14, 28)),
     "Director of Integrity": list(range(14, 28)),
     "Curator":               list(range(14, 28)),
     "Chief of FIBCO":        list(range(14, 28)),
@@ -378,13 +378,13 @@ def api_member_add():
         if codename:
             sheet.update_cell(insert_at, COL["CODENAME"], codename)
 
-        # Default permissions
+        # Default permissions — ✓ wenn erlaubt, ✗ wenn nicht
         default_cols = RANG_DEFAULTS.get(rang, [])
         for p in PERMISSIONS:
-            val = "✓" if p["col"] in default_cols else ""
+            val = "✓" if p["col"] in default_cols else "✗"
             sheet.update_cell(insert_at, p["col"], val)
 
-        perms = {p["key"]: p["col"] in default_cols for p in PERMISSIONS}
+        perms = {p["key"]: (p["col"] in default_cols) for p in PERMISSIONS}
         print(f"[{datetime.now():%d.%m.%Y %H:%M}] {session['discord_user']['username']} → Mitglied: {name} ({rang}) Zeile {insert_at}")
         return jsonify({
             "ok": True,
