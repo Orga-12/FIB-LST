@@ -37,7 +37,7 @@ COL_ID         = 4   # D
 COL_RANKS      = 5   # E
 COL_DATE       = 7   # G  (Date Joined)
 COL_URLAUB     = 8   # H  (Urlaub)
-COL_STRIKES    = 9   # I  (Strikes)
+COL_STRIKES    = 11  # K  (Strikes)
 COL_CODENAME   = 12  # L  (Codename)
 
 # Berechtigungs-Spalten (N=14 bis AB=28)
@@ -320,18 +320,16 @@ async def mitglied_hinzufuegen(
             return
 
         zeile, muss_einfuegen = zeile_fuer_rang(sheet, rang)
-        vorherige_zeile = zeile - 1
 
-        # Neue Zeile einfügen (insert_row verschiebt alles nach unten)
-        # Die leere Trennzeile bleibt dadurch automatisch erhalten
-        if muss_einfuegen:
-            sheet.insert_row([], zeile)
+        # Immer eine neue Zeile einfügen damit Trennzeilen erhalten bleiben
+        sheet.insert_row([], zeile)
 
-        # Format von der vorherigen Zeile kopieren
-        if vorherige_zeile >= DATA_START_ROW:
+        # Format von der Zeile DARÜBER kopieren (letzte Zeile der gleichen Gruppe)
+        format_quelle = zeile - 1
+        if format_quelle >= DATA_START_ROW:
             try:
                 creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)
-                copy_row_format(SPREADSHEET_ID, vorherige_zeile, zeile, creds)
+                copy_row_format(SPREADSHEET_ID, format_quelle, zeile, creds)
             except Exception as fmt_err:
                 print(f"⚠️ Format konnte nicht kopiert werden: {fmt_err}")
 
