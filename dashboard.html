@@ -683,12 +683,18 @@ async function save(type){
         body:JSON.stringify({rowIndex:selected.rowIndex,originalName:selected.name,name:newName,codename:newCode,rang:newRang,date:newDate,urlaub:newUrlaub,updatePerms})});
       if(res.status===401){window.location="/";return;}
       if(!res.ok){const e=await res.json();throw new Error(e.error||"Fehler");}
+      const result = await res.json();
       // Update local state
       const idx=members.findIndex(m=>m.name===selected.name);
       if(idx>=0){Object.assign(members[idx],{name:newName,codename:newCode,rang:newRang,date:newDate,urlaub:newUrlaub});}
       selected.name=newName;selected.codename=newCode;selected.rang=newRang;selected.date=newDate;selected.urlaub=newUrlaub;
-      if(updatePerms){toast(`↑ Rang geändert: ${oldRang} → ${newRang}`,"info");await loadMembers();}
-      else{renderHero();renderSidebar();}
+      if(result.moved || updatePerms){
+        toast(`↑ Rang geändert: ${oldRang} → ${newRang} — Mitglied verschoben ✓`,"info");
+        await loadMembers();
+        // Select the moved member again
+        const moved = members.find(m=>m.name===newName);
+        if(moved) selectMember(moved);
+      } else {renderHero();renderSidebar();}
       document.getElementById("smsg-info").textContent="✅ Gespeichert!";
       document.getElementById("smsg-info").className="smsg ok";
       setTimeout(()=>document.getElementById("smsg-info").textContent="",3000);
