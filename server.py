@@ -391,12 +391,15 @@ def api_update_member():
                 perm_updates.append({"range": f"{SHEET_NAME}!{col_letter}{zeile_neu}", "values": [[val]]})
             sheet.spreadsheet.values_batch_update({"valueInputOption": "RAW", "data": perm_updates})
 
-            # Trennzeile danach einfügen
+            # Trennzeile danach einfügen — nur wenn danach keine leere Zeile ist
             try:
-                trenn = zeile_neu + 1
-                sheet.insert_row([], trenn)
-                creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES_SHEETS)
-                copy_row_format_srv(SPREADSHEET_ID, 42, trenn, creds)
+                alle_werte2 = sheet.col_values(COL["NAME"])
+                naechste2   = zeile_neu + 1
+                naechste_val2 = alle_werte2[naechste2 - 1].strip() if len(alle_werte2) >= naechste2 else ""
+                if naechste_val2 != "":
+                    sheet.insert_row([], naechste2)
+                    creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES_SHEETS)
+                    copy_row_format_srv(SPREADSHEET_ID, 57, naechste2, creds)
             except Exception as e:
                 print(f"⚠️ Trennzeile: {e}")
 
@@ -573,12 +576,15 @@ def api_member_add():
             except Exception as fmt_err:
                 print(f"⚠️ Format Mitglied: {fmt_err}")
 
-        # Trennzeile nach dem neuen Mitglied einfügen (Format von Zeile 42)
+        # Trennzeile einfügen — nur wenn danach keine leere Zeile ist
         try:
-            trenn_zeile = insert_at + 1
-            sheet.insert_row([], trenn_zeile)
-            creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES_SHEETS)
-            copy_row_format_srv(SPREADSHEET_ID, 42, trenn_zeile, creds)
+            alle_werte = sheet.col_values(COL["NAME"])
+            naechste   = insert_at + 1
+            naechste_val = alle_werte[naechste - 1].strip() if len(alle_werte) >= naechste else ""
+            if naechste_val != "":
+                sheet.insert_row([], naechste)
+                creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES_SHEETS)
+                copy_row_format_srv(SPREADSHEET_ID, 57, naechste, creds)
         except Exception as fmt_err:
             print(f"⚠️ Trennzeile: {fmt_err}")
 
