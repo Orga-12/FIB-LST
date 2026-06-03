@@ -333,12 +333,15 @@ async def mitglied_hinzufuegen(
             except Exception as fmt_err:
                 print(f"⚠️ Format Mitglied: {fmt_err}")
 
-        # Trennzeile nach dem neuen Mitglied einfügen (Format von Zeile 42 kopieren)
-        trenn_zeile = zeile + 1
+        # Trennzeile einfügen — nur wenn danach keine leere Zeile ist
         try:
-            sheet.insert_row([], trenn_zeile)
-            creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)
-            copy_row_format(SPREADSHEET_ID, 42, trenn_zeile, creds)
+            col_c_vals   = sheet.col_values(COL_NAME)
+            trenn_zeile  = zeile + 1
+            naechste_val = col_c_vals[trenn_zeile - 1].strip() if len(col_c_vals) >= trenn_zeile else ""
+            if naechste_val != "":
+                sheet.insert_row([], trenn_zeile)
+                creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)
+                copy_row_format(SPREADSHEET_ID, 57, trenn_zeile, creds)
         except Exception as fmt_err:
             print(f"⚠️ Trennzeile: {fmt_err}")
 
