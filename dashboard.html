@@ -405,7 +405,7 @@ const PERMISSIONS=[
   {col:26,key:"Z", name:"Akten schreiben (Senior)"},
   {col:27,key:"AA",name:"Einweisung bei neuen Mitgliedern"},
 ];
-const RANG_COLORS={"FIB Director":"#cf3a3a","Director of Integrity":"#e67e22","Curator":"#22d3ee","Chief of FIBCO":"#eab308","Deputy Chief of FIBCO":"#3b82f6","Supervisor":"#94a3b8","Senior Mitglied":"#a855f7","Mitglied":"#60a5fa","FIBCO Veteran_REMOVED":"#2563eb","Trainee":"#64748b"};
+const RANG_COLORS={"FIB-Director":"#cf3a3a","Director of Integrity":"#e67e22","Curator":"#22d3ee","Chief of FIBCO":"#eab308","Deputy Chief of FIBCO":"#3b82f6","Supervisor":"#94a3b8","Senior Mitglied":"#a855f7","Counsel General":"#cf3a3a","Mitglied":"#60a5fa","FIBCO Veteran":"#2563eb","Trainee":"#64748b"};
 const RANG_ORDER=Object.keys(RANG_COLORS);
 
 let members=[],selected=null,dirty={},activeTab='perms',pendingStrike=null;
@@ -602,18 +602,19 @@ async function save(type){
   if(type==='perms'){
     if(!Object.keys(dirty).length)return;
     const btn=document.getElementById("sbtn-perms");
-    btn.className="sbtn saving";btn.textContent="Speichert...";
-    try{
-      const res=await fetch("/api/permissions",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({rowIndex:selected.rowIndex,perms:selected.perms})});
-      if(res.status===401){window.location="/";return;}
-      if(!res.ok){const e=await res.json();throw new Error(e.error||"Fehler");}
-      dirty={};updateSaveBar();toast("✓ Berechtigungen gespeichert","ok");renderSidebar();
-    }catch(e){
-      document.getElementById("sbtn-perms").className="sbtn dirty";
-      document.getElementById("smsg-perms").textContent="❌ "+e.message;
-      document.getElementById("smsg-perms").className="smsg err";
-      setTimeout(()=>{document.getElementById("smsg-perms").textContent="";},4000);
-    }
+    // Optimistic UI — sofort als gespeichert anzeigen
+    dirty={};updateSaveBar();
+    toast("✓ Berechtigungen gespeichert","ok");
+    renderSidebar();
+    // Im Hintergrund speichern
+    fetch("/api/permissions",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({rowIndex:selected.rowIndex,perms:selected.perms})})
+      .then(res=>{
+        if(res.status===401){window.location="/";return;}
+        if(!res.ok) return res.json().then(e=>{throw new Error(e.error||"Fehler");});
+      })
+      .catch(e=>{
+        toast("❌ Speichern fehlgeschlagen: "+e.message,"err");
+      });
   }
   else if(type==='info'){
     const newName  =document.getElementById("edit-name").value.trim();
@@ -645,24 +646,19 @@ async function save(type){
   }
   else if(type==='strikes'){
     if(!pendingStrike){toast("Bitte Strike-Stand auswählen","err");return;}
-    try{
-      const res=await fetch("/api/member/strikes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({rowIndex:selected.rowIndex,strikes:pendingStrike})});
-      if(res.status===401){window.location="/";return;}
-      if(!res.ok){const e=await res.json();throw new Error(e.error||"Fehler");}
-      const idx=members.findIndex(m=>m.name===selected.name);
-      if(idx>=0)members[idx].strikes=pendingStrike;
-      selected.strikes=pendingStrike;
-      const msgs={"0/3":"Strike zurückgesetzt ✓","1/3":"1/3 Strike gesetzt","2/3":"2/3 Strikes gesetzt","3/3":"3/3 Strikes — Rauswurf! 🚨"};
-      toast(msgs[pendingStrike]||"Gespeichert","ok");
-      renderHero();renderSidebar();loadStats();
-      document.getElementById("smsg-strikes").textContent="✅ Strike aktualisiert";
-      document.getElementById("smsg-strikes").className="smsg ok";
-      setTimeout(()=>document.getElementById("smsg-strikes").textContent="",3000);
-      pendingStrike=null;updateStrikeBtns();
-    }catch(e){
-      document.getElementById("smsg-strikes").textContent="❌ "+e.message;
-      document.getElementById("smsg-strikes").className="smsg err";
-    }
+    // Optimistic UI für Strikes
+    const strikeVal = pendingStrike;
+    const idx=members.findIndex(m=>m.name===selected.name);
+    if(idx>=0)members[idx].strikes=strikeVal;
+    selected.strikes=strikeVal;
+    const msgs={"0/3":"Strike zurückgesetzt ✓","1/3":"1/3 Strike gesetzt ⚠️","2/3":"2/3 Strikes gesetzt ⚠️","3/3":"3/3 Strikes — Rauswurf! 🚨"};
+    toast(msgs[strikeVal]||"Gespeichert","ok");
+    renderHero();renderSidebar();
+    pendingStrike=null;updateStrikeBtns();
+    // Im Hintergrund speichern
+    fetch("/api/member/strikes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({rowIndex:selected.rowIndex,strikes:strikeVal})})
+      .then(res=>{if(!res.ok)return res.json().then(e=>{throw new Error(e.error);});})
+      .catch(e=>toast("❌ Strike-Fehler: "+e.message,"err"));
   }
 }
 
