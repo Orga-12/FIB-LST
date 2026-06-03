@@ -1,3 +1,17 @@
+# ─── Active Users Tracking ────────────────────────────────────────────────────
+active_users = {}  # {username: last_seen_timestamp}
+
+@app.before_request
+def track_active():
+    if is_logged_in():
+        user = session["discord_user"]["username"]
+        active_users[user] = datetime.now()
+        # Entferne inaktive Nutzer (>5 Min)
+        cutoff = datetime.now()
+        inactive = [u for u, t in active_users.items() if (cutoff - t).seconds > 300]
+        for u in inactive:
+            del active_users[u]
+
 import os, json, secrets, requests, tempfile
 from flask import Flask, redirect, request, session, send_file, jsonify, abort
 from google.oauth2.service_account import Credentials
@@ -34,6 +48,20 @@ SCOPES_SHEETS = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive",
 ]
+
+# ─── Activity Log (in-memory, letzte 200 Einträge) ───────────────────────────
+from collections import deque
+activity_log = deque(maxlen=200)
+
+def log_action(user: str, action: str, target: str, detail: str = ""):
+    """Loggt eine Aktion mit Zeitstempel."""
+    activity_log.appendleft({
+        "time":   datetime.now().strftime("%d.%m.%Y %H:%M:%S"),
+        "user":   user,
+        "action": action,
+        "target": target,
+        "detail": detail,
+    })
 
 PERMISSIONS = [
     {"col": 14, "key": "N",  "name": "Der FIBCO über die Schultern schauen"},
@@ -249,7 +277,10 @@ def api_save_permissions():
             "valueInputOption": "RAW",
             "data": updates
         })
-        print(f"[{datetime.now():%d.%m.%Y %H:%M}] {session['discord_user']['username']} → Berechtigungen Zeile {row_index}")
+        user = session['discord_user']['username']
+        changed_count = sum(1 for v in perms.values() if v)
+        log_action(user, "Berechtigungen", name, f"{changed_count}/14 aktiv")
+        print(f"[{datetime.now():%d.%m.%Y %H:%M}] {user} → Berechtigungen {name}")
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -290,7 +321,13 @@ def api_update_member():
                 perm_updates.append({"range": f"{SHEET_NAME}!{col_letter}{row_index}", "values": [[val]]})
             sheet.spreadsheet.values_batch_update({"valueInputOption": "RAW", "data": perm_updates})
 
-        print(f"[{datetime.now():%d.%m.%Y %H:%M}] {session['discord_user']['username']} → Member update Zeile {row_index}")
+        user = session['discord_user']['username']
+        new_rang = data.get("rang", "")
+        if data.get("updatePerms"):
+            log_action(user, "Uprank/Downrank", name, f"→ {new_rang}")
+        else:
+            log_action(user, "Bearbeitet", name, ", ".join([k for k in ["name","rang","urlaub","codename"] if k in data]))
+        print(f"[{datetime.now():%d.%m.%Y %H:%M}] {user} → Member update {name}")
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -309,7 +346,9 @@ def api_update_strikes():
         if not row_index:
             return jsonify({"error": f"Mitglied '{name}' nicht gefunden"}), 404
         sheet.update_cell(row_index, COL["STRIKES"], strikes)
-        print(f"[{datetime.now():%d.%m.%Y %H:%M}] {session['discord_user']['username']} → Strike {strikes} Zeile {row_index}")
+        user = session['discord_user']['username']
+        log_action(user, "Strike gesetzt", name, strikes)
+        print(f"[{datetime.now():%d.%m.%Y %H:%M}] {user} → Strike {strikes} {name}")
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -327,7 +366,9 @@ def api_delete_member():
         if not row_index:
             return jsonify({"error": f"Mitglied '{name}' nicht gefunden"}), 404
         sheet.delete_rows(row_index)
-        print(f"[{datetime.now():%d.%m.%Y %H:%M}] {session['discord_user']['username']} → Zeile {row_index} gelöscht")
+        user = session['discord_user']['username']
+        log_action(user, "Entfernt", name, "")
+        print(f"[{datetime.now():%d.%m.%Y %H:%M}] {user} → {name} entfernt")
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -462,7 +503,9 @@ def api_member_add():
             sheet.update_cell(insert_at, p["col"], val)
 
         perms = {p["key"]: (p["col"] in default_cols) for p in PERMISSIONS}
-        print(f"[{datetime.now():%d.%m.%Y %H:%M}] {session['discord_user']['username']} → Mitglied: {name} ({rang}) Zeile {insert_at}")
+        user = session['discord_user']['username']
+        log_action(user, "Hinzugefügt", name, rang)
+        print(f"[{datetime.now():%d.%m.%Y %H:%M}] {user} → Mitglied: {name} ({rang}) Zeile {insert_at}")
         return jsonify({
             "ok": True,
             "rowIndex": insert_at,
@@ -489,6 +532,22 @@ def api_datenbank():
         } for r in records if r.get("Name")])
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# ─── Activity Log API ─────────────────────────────────────────────────────────
+@app.route("/api/log")
+def api_log():
+    if not is_logged_in():
+        abort(401)
+    return jsonify(list(activity_log))
+
+@app.route("/api/active-users")
+def api_active_users():
+    if not is_logged_in():
+        abort(401)
+    cutoff = datetime.now()
+    online = [u for u, t in active_users.items() if (cutoff - t).seconds <= 300]
+    return jsonify(online)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
