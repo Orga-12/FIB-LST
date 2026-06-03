@@ -321,17 +321,26 @@ async def mitglied_hinzufuegen(
 
         zeile, muss_einfuegen = zeile_fuer_rang(sheet, rang)
 
-        # Immer eine neue Zeile einfügen damit Trennzeilen erhalten bleiben
+        # Neue Zeile einfügen
         sheet.insert_row([], zeile)
 
-        # Format von der Zeile DARÜBER kopieren (letzte Zeile der gleichen Gruppe)
+        # Format des neuen Mitglieds von der Zeile darüber kopieren
         format_quelle = zeile - 1
         if format_quelle >= DATA_START_ROW:
             try:
                 creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)
                 copy_row_format(SPREADSHEET_ID, format_quelle, zeile, creds)
             except Exception as fmt_err:
-                print(f"⚠️ Format konnte nicht kopiert werden: {fmt_err}")
+                print(f"⚠️ Format Mitglied: {fmt_err}")
+
+        # Trennzeile nach dem neuen Mitglied einfügen (Format von Zeile 42 kopieren)
+        trenn_zeile = zeile + 1
+        try:
+            sheet.insert_row([], trenn_zeile)
+            creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)
+            copy_row_format(SPREADSHEET_ID, 42, trenn_zeile, creds)
+        except Exception as fmt_err:
+            print(f"⚠️ Trennzeile: {fmt_err}")
 
         # Formeln für DN und ID — C-Referenz dynamisch auf die neue Zeile anpassen
         formel_dn = f'=WENN(C{zeile}=""; ""; WENNFEHLER(FILTER(Tabellenblatt37!E12:E295; Tabellenblatt37!B12:B295 = C{zeile}); "/"))'
