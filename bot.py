@@ -60,14 +60,16 @@ PERMISSIONS = [
 
 # Standard-Häkchen pro Rang (Spalten-Indizes aus PERMISSIONS)
 RANG_DEFAULTS = {
-    "FIB Director":          list(range(14, 28)),
+    "FIB-Director":          list(range(14, 28)),
     "Director of Integrity": list(range(14, 28)),
     "Curator":               list(range(14, 28)),
     "Chief of FIBCO":        list(range(14, 28)),
     "Deputy Chief of FIBCO": list(range(14, 27)),
     "Supervisor":            list(range(14, 26)),
     "Senior Mitglied":       list(range(14, 25)),
+    "Counsel General":       list(range(14, 25)),
     "Mitglied":              list(range(14, 22)),
+    "FIBCO Veteran":         list(range(14, 20)),
     "Trainee":               list(range(14, 17)),
 }
 
@@ -81,14 +83,16 @@ SCOPES = [
 
 # Ränge genau wie auf deinem Sheet
 RAENGE = [
-    "FIB Director",
+    "FIB-Director",
     "Director of Integrity",
     "Curator",
     "Chief of FIBCO",
     "Deputy Chief of FIBCO",
     "Supervisor",
     "Senior Mitglied",
+    "Counsel General",
     "Mitglied",
+    "FIBCO Veteran",
     "Trainee",
 ]
 
@@ -96,11 +100,12 @@ RAENGE = [
 RANG_FARBEN = {
     "FIB-Director":          0xE74C3C,
     "Director of Integrity": 0xE67E22,
-    "Curator":               0x1A252F,
+    "Curator":               0x22D3EE,
     "Chief of FIBCO":        0xF1C40F,
     "Deputy Chief of FIBCO": 0x3498DB,
     "Supervisor":            0x95A5A6,
     "Senior Mitglied":       0x9B59B6,
+    "Counsel General":       0xE74C3C,
     "Mitglied":              0x3498DB,
     "FIBCO Veteran":         0x2471A3,
     "Trainee":               0x7F8C8D,
