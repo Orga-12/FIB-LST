@@ -98,7 +98,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 .permrow{display:flex;align-items:center;gap:.8rem;padding:.68rem 1.1rem;border-bottom:1px solid rgba(20,27,40,.9);cursor:pointer;transition:background .1s;user-select:none}
 .permrow:last-child{border-bottom:none}
 .permrow:hover{background:rgba(255,255,255,.018)}
-.permrow.on{background:rgba(34,197,94,.025)}
+.permrow.on{background:rgba(34,197,94,.025)}.permrow.off{background:rgba(239,68,68,.015)}
 .tog{width:37px;height:20px;border-radius:10px;position:relative;flex-shrink:0;transition:all .2s;border:1px solid}
 .tog.on{background:var(--green);border-color:var(--green);box-shadow:0 0 7px rgba(34,197,94,.28)}
 .tog.off{background:#141c2c;border-color:var(--border2)}
@@ -111,8 +111,8 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 .permrow.off .pname{color:var(--muted)}
 .cbadge{font-family:var(--mono);font-size:.58rem;padding:.08rem .38rem;border-radius:3px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);color:var(--yellow)}
 .perm-status{font-family:var(--mono);font-size:.85rem;font-weight:700;min-width:18px;text-align:center;flex-shrink:0}
-.perm-yes{color:var(--green)}
-.perm-no{color:var(--red);opacity:.7}
+.perm-yes{color:var(--green);text-shadow:0 0 8px rgba(34,197,94,.4)}
+.perm-no{color:var(--red);text-shadow:0 0 8px rgba(239,68,68,.3)}
 .edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;padding:1.1rem}
 @media(max-width:600px){.edit-grid{grid-template-columns:1fr}}
 .field{display:flex;flex-direction:column;gap:.35rem}
@@ -405,7 +405,7 @@ const PERMISSIONS=[
   {col:26,key:"Z", name:"Akten schreiben (Senior)"},
   {col:27,key:"AA",name:"Einweisung bei neuen Mitgliedern"},
 ];
-const RANG_COLORS={"FIB-Director":"#cf3a3a","Director of Integrity":"#e67e22","Curator":"#22d3ee","Chief of FIBCO":"#eab308","Deputy Chief of FIBCO":"#3b82f6","Supervisor":"#94a3b8","Senior Mitglied":"#a855f7","Mitglied":"#60a5fa","FIBCO Veteran":"#2563eb","Trainee":"#64748b"};
+const RANG_COLORS={"FIB Director":"#cf3a3a","Director of Integrity":"#e67e22","Curator":"#22d3ee","Chief of FIBCO":"#eab308","Deputy Chief of FIBCO":"#3b82f6","Supervisor":"#94a3b8","Senior Mitglied":"#a855f7","Mitglied":"#60a5fa","FIBCO Veteran_REMOVED":"#2563eb","Trainee":"#64748b"};
 const RANG_ORDER=Object.keys(RANG_COLORS);
 
 let members=[],selected=null,dirty={},activeTab='perms',pendingStrike=null;
@@ -694,9 +694,9 @@ function toast(msg,type){
 
 // ── ADD MODAL ─────────────────────────────────────────────────────────────────
 const PERM_COUNT_BY_RANG = {
-  "FIB-Director":14,"Director of Integrity":14,"Curator":14,"Chief of FIBCO":14,
+  "FIB Director":14,"Director of Integrity":14,"Curator":14,"Chief of FIBCO":14,
   "Deputy Chief of FIBCO":13,"Supervisor":12,"Senior Mitglied":11,
-  "Mitglied":8,"FIBCO Veteran":6,"Trainee":3
+  "Mitglied":8,"Trainee":3
 };
 
 let addStep1Data = null;
