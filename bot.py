@@ -60,15 +60,14 @@ PERMISSIONS = [
 
 # Standard-Häkchen pro Rang (Spalten-Indizes aus PERMISSIONS)
 RANG_DEFAULTS = {
-    "FIB-Director":          list(range(14, 28)),  # alle
-    "Director of Integrity": list(range(14, 28)),  # alle
-    "Curator":               list(range(14, 28)),  # alle
-    "Chief of FIBCO":        list(range(14, 28)),  # alle
+    "FIB Director":          list(range(14, 28)),
+    "Director of Integrity": list(range(14, 28)),
+    "Curator":               list(range(14, 28)),
+    "Chief of FIBCO":        list(range(14, 28)),
     "Deputy Chief of FIBCO": list(range(14, 27)),
     "Supervisor":            list(range(14, 26)),
     "Senior Mitglied":       list(range(14, 25)),
     "Mitglied":              list(range(14, 22)),
-    "FIBCO Veteran":         list(range(14, 20)),
     "Trainee":               list(range(14, 17)),
 }
 
@@ -82,7 +81,7 @@ SCOPES = [
 
 # Ränge genau wie auf deinem Sheet
 RAENGE = [
-    "FIB-Director",
+    "FIB Director",
     "Director of Integrity",
     "Curator",
     "Chief of FIBCO",
@@ -90,7 +89,6 @@ RAENGE = [
     "Supervisor",
     "Senior Mitglied",
     "Mitglied",
-    "FIBCO Veteran",
     "Trainee",
 ]
 
@@ -142,13 +140,13 @@ def naechste_freie_zeile(sheet):
 
 def zeile_fuer_rang(sheet, rang: str):
     """
-    Findet die beste Einfügezeile für einen bestimmten Rang.
-    Fügt die neue Zeile ans Ende der jeweiligen Rang-Gruppe ein.
-    Gibt (zeile, muss_einfügen) zurück.
-    muss_einfügen=True → sheet.insert_row nötig, False → leere Zeile beschreiben.
+    Findet die beste Einfügezeile für einen Rang.
+    Zwischen jeder Rang-Gruppe gibt es immer eine leere Trennzeile.
+    Neuer Eintrag kommt ans Ende der Gruppe, VOR der Trennzeile.
+    Gibt (zeile, muss_insert) zurück.
     """
     alle = sheet.get_all_values()
-    rang_col = COL_RANKS - 1  # 0-indexed
+    rang_col = COL_RANKS - 1
     name_col = COL_NAME - 1
 
     gruppe_ende = None
@@ -162,17 +160,18 @@ def zeile_fuer_rang(sheet, rang: str):
         row_name = row[name_col].strip() if len(row) > name_col else ""
 
         if row_rang == rang and row_name:
-            in_gruppe  = True
+            in_gruppe   = True
             gruppe_ende = zeile_nr
         elif in_gruppe and not row_name:
-            # Leere Trennzeile nach der Gruppe → hier einfügen
-            return (zeile_nr, False)
+            # Leere Trennzeile gefunden → neues Mitglied kommt HIER rein
+            # Die Trennzeile bleibt danach erhalten durch insert_row davor
+            return (zeile_nr, True)
         elif in_gruppe and row_rang != rang and row_name:
-            # Nächste Gruppe fängt an → davor einfügen
+            # Nächste Gruppe direkt dahinter → neue Zeile einfügen + Trennzeile
             return (zeile_nr, True)
 
     if gruppe_ende:
-        # Gruppe gefunden aber nichts danach → direkt nach letztem Eintrag
+        # Gruppe am Ende der Tabelle → neue Zeile einfügen + Trennzeile danach
         return (gruppe_ende + 1, True)
 
     # Rang noch gar nicht vorhanden → ans Ende
@@ -318,7 +317,8 @@ async def mitglied_hinzufuegen(
         zeile, muss_einfuegen = zeile_fuer_rang(sheet, rang)
         vorherige_zeile = zeile - 1
 
-        # Neue Zeile einfügen wenn nötig (mitten in der Tabelle)
+        # Neue Zeile einfügen (insert_row verschiebt alles nach unten)
+        # Die leere Trennzeile bleibt dadurch automatisch erhalten
         if muss_einfuegen:
             sheet.insert_row([], zeile)
 
@@ -344,13 +344,14 @@ async def mitglied_hinzufuegen(
         if codename:
             sheet.update_cell(zeile, COL_CODENAME, codename)
 
-        # Standard-Häkchen nach Rang setzen
+        # Standard-Häkchen nach Rang setzen — ✓ wenn erlaubt, ✗ wenn nicht
         default_cols = RANG_DEFAULTS.get(rang, [])
         perm_updates = []
         for col, perm_name in PERMISSIONS:
-            val = "✓" if col in default_cols else ""
+            val = "✓" if col in default_cols else "✗"
+            col_letter = chr(64+col) if col <= 26 else chr(64+(col-1)//26) + chr(65+(col-1)%26)
             perm_updates.append({
-                "range": f"{chr(64+col)}{zeile}",
+                "range": f"{col_letter}{zeile}",
                 "values": [[val]]
             })
         if perm_updates:
