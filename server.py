@@ -70,7 +70,7 @@ RANG_DEFAULTS = {
     "Trainee":               list(range(14, 17)),
 }
 
-COL = {"DN":2,"NAME":3,"ID":4,"RANG":5,"DATE":7,"URLAUB":8,"STRIKES":9,"CODENAME":12}
+COL = {"DN":2,"NAME":3,"ID":4,"RANG":5,"DATE":7,"URLAUB":8,"STRIKES":11,"CODENAME":12}
 DATA_START = 12
 
 # ─── Google Sheets ────────────────────────────────────────────────────────────
