@@ -18,7 +18,7 @@
 html,body{height:100%;overflow:hidden}
 body{background:var(--bg);color:var(--text);font-family:var(--body);font-weight:300;display:flex;flex-direction:column}
 body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.025) 2px,rgba(0,0,0,.025) 4px)}
-#topbar{height:54px;background:linear-gradient(90deg,#0c1020,#0f1628,#0c1020);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 1.2rem;gap:.8rem;flex-shrink:0;position:relative}
+#topbar{height:56px;background:linear-gradient(90deg,#09111f,#0d1628,#09111f);border-bottom:1px solid rgba(201,168,76,.12);display:flex;align-items:center;padding:0 1.2rem;gap:.8rem;flex-shrink:0;position:relative;box-shadow:0 2px 20px rgba(0,0,0,.4)}
 #topbar::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold2),var(--gold),var(--gold2),transparent);opacity:.4}
 .brand{display:flex;align-items:center;gap:.7rem}
 .brand-icon{width:30px;height:30px;background:linear-gradient(135deg,var(--gold2),var(--gold));border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:.85rem;box-shadow:0 0 10px rgba(201,168,76,.25)}
@@ -41,21 +41,21 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 .uname{font-size:.72rem;color:var(--text);font-weight:600}
 .ulogout{font-size:.68rem;color:var(--muted);text-decoration:none;padding:.2rem .5rem;border:1px solid var(--border);border-radius:4px;transition:all .15s}
 .ulogout:hover{color:var(--text);border-color:var(--border2)}
-#statsbar{background:var(--s1);border-bottom:1px solid var(--border);display:flex;padding:0 1.2rem;flex-shrink:0}
+#statsbar{background:linear-gradient(90deg,#0a0e18,#0d1220,#0a0e18);border-bottom:1px solid var(--border);display:flex;padding:0 1.2rem;flex-shrink:0}
 .sitem{padding:.5rem 1.2rem .5rem 0;border-right:1px solid var(--border);margin-right:1.2rem;display:flex;align-items:center;gap:.5rem}
 .sitem:last-child{border-right:none}
 .snum{font-family:var(--head);font-size:1.1rem;font-weight:700;color:var(--gold)}
 .slbl{font-family:var(--mono);font-size:.56rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
 #main{display:flex;flex:1;overflow:hidden}
-#sidebar{width:272px;min-width:200px;background:var(--s1);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
-#sbscroll{flex:1;overflow-y:auto}
+#sidebar{width:272px;min-width:200px;background:var(--s1);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
+#sbscroll{flex:1;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain}
 #sbscroll::-webkit-scrollbar{width:3px}
 #sbscroll::-webkit-scrollbar-thumb{background:var(--border2)}
-.rhdr{padding:.38rem 1rem;font-family:var(--mono);font-size:.56rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;border-top:1px solid var(--border);position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between}
+.rhdr{padding:.38rem 1rem;font-family:var(--mono);font-size:.56rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;border-top:1px solid var(--border);position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;isolation:isolate}
 .rc{font-size:.62rem;opacity:.55}
 .mrow{display:flex;align-items:center;gap:.6rem;padding:.55rem 1rem;cursor:pointer;border-bottom:1px solid rgba(20,27,40,.8);border-left:3px solid transparent;transition:background .1s,border-color .1s}
-.mrow:hover{background:#121828}
-.mrow.active{background:var(--s3)}
+.mrow:hover{background:#131a2a;transition:background .1s}
+.mrow.active{background:linear-gradient(90deg,rgba(201,168,76,.08),var(--s3))}
 .mdn{font-family:var(--mono);font-size:.62rem;color:var(--muted);min-width:20px}
 .minfo{flex:1;min-width:0}
 .mname{font-size:.82rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -64,15 +64,15 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 .ptrack{height:3px;background:var(--border);border-radius:2px;overflow:hidden}
 .pfill{height:100%;border-radius:2px;transition:width .3s}
 .pnum{font-family:var(--mono);font-size:.56rem;color:var(--muted);text-align:right;margin-top:2px}
-#editor{flex:1;overflow-y:auto;background:var(--bg)}
+#editor{flex:1;overflow-y:auto;background:var(--bg);min-width:0}
 #editor::-webkit-scrollbar{width:3px}
 #editor::-webkit-scrollbar-thumb{background:var(--border2)}
 #empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.7rem}
 .eicon{width:60px;height:60px;border-radius:50%;background:var(--s2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:1.6rem}
 #empty h3{font-family:var(--head);font-size:.95rem;color:#1e2a3a;font-weight:700}
 #empty p{font-size:.78rem;color:#131c28}
-#einner{padding:1.5rem;max-width:860px;margin:0 auto;width:100%}
-.hero{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:1.1rem 1.4rem;display:flex;align-items:center;gap:1.1rem;margin-bottom:1rem;flex-wrap:wrap;position:relative;overflow:hidden}
+#einner{padding:1.5rem;max-width:820px;margin:0 auto;width:100%;min-width:0}
+.hero{background:linear-gradient(135deg,var(--s2),var(--s1));border:1px solid var(--border);border-radius:12px;padding:1.2rem 1.5rem;display:flex;align-items:center;gap:1.1rem;margin-bottom:1rem;flex-wrap:wrap;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.3)}
 .havatar{width:48px;height:48px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:var(--head);font-size:1.4rem;font-weight:700;flex-shrink:0}
 .hmeta{flex:1;min-width:0}
 .hname{font-family:var(--head);font-size:1.1rem;font-weight:700;color:#fff;letter-spacing:.03em}
@@ -82,11 +82,11 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 .hright{text-align:right;flex-shrink:0}
 .hnum{font-family:var(--head);font-size:2rem;font-weight:700;line-height:1}
 .hlbl{font-family:var(--mono);font-size:.58rem;color:var(--muted)}
-.tabs{display:flex;gap:0;margin-bottom:1rem;background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:.3rem;overflow-x:auto;flex-wrap:wrap}
+.tabs{display:flex;gap:.2rem;margin-bottom:1rem;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:.3rem;overflow-x:auto;box-shadow:0 2px 8px rgba(0,0,0,.2)}
 .tab{padding:.45rem 1.1rem;border-radius:6px;font-family:var(--head);font-size:.85rem;font-weight:600;letter-spacing:.04em;cursor:pointer;transition:all .15s;color:var(--muted);border:none;background:transparent}
 .tab:hover{color:var(--text)}
-.tab.active{background:var(--s3);color:#fff;box-shadow:0 1px 4px rgba(0,0,0,.3)}
-.panel{background:var(--s1);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:1rem}
+.tab.active{background:linear-gradient(135deg,#1a2540,var(--s3));color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.4);border:1px solid var(--border2)}
+.panel{background:var(--s1);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:1rem;box-shadow:0 2px 12px rgba(0,0,0,.2)}
 .phdr{padding:.7rem 1.1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.015)}
 .ptitle{font-family:var(--mono);font-size:.62rem;letter-spacing:.15em;text-transform:uppercase;color:var(--muted)}
 .pacts{display:flex;gap:.35rem}
@@ -402,7 +402,7 @@ const PERMISSIONS=[
   {col:23,key:"W", name:"HB vollstrecken"},
   {col:24,key:"X", name:"Akten Überprüfung"},
   {col:25,key:"Y", name:"Sanktion austeilen"},
-  {col:26,key:"Z", name:"Akten schließen"},
+  {col:26,key:"Z", name:"Akten schreiben (Senior)"},
   {col:27,key:"AA",name:"Einweisung bei neuen Mitgliedern"},
 ];
 const RANG_COLORS={"FIB-Director":"#cf3a3a","Director of Integrity":"#e67e22","Curator":"#22d3ee","Chief of FIBCO":"#eab308","Deputy Chief of FIBCO":"#3b82f6","Supervisor":"#94a3b8","Senior Mitglied":"#a855f7","Counsel General":"#cf3a3a","Mitglied":"#60a5fa","FIBCO Veteran":"#2563eb","Trainee":"#64748b"};
@@ -607,7 +607,7 @@ async function save(type){
     toast("✓ Berechtigungen gespeichert","ok");
     renderSidebar();
     // Im Hintergrund speichern
-    fetch("/api/permissions",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({rowIndex:selected.rowIndex,perms:selected.perms})})
+    fetch("/api/permissions",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({rowIndex:selected.rowIndex,name:selected.name,perms:selected.perms})})
       .then(res=>{
         if(res.status===401){window.location="/";return;}
         if(!res.ok) return res.json().then(e=>{throw new Error(e.error||"Fehler");});
@@ -627,7 +627,7 @@ async function save(type){
     const updatePerms=newRang!==oldRang;
     try{
       const res=await fetch("/api/member/update",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({rowIndex:selected.rowIndex,name:newName,codename:newCode,rang:newRang,date:newDate,urlaub:newUrlaub,updatePerms})});
+        body:JSON.stringify({rowIndex:selected.rowIndex,originalName:selected.name,name:newName,codename:newCode,rang:newRang,date:newDate,urlaub:newUrlaub,updatePerms})});
       if(res.status===401){window.location="/";return;}
       if(!res.ok){const e=await res.json();throw new Error(e.error||"Fehler");}
       // Update local state
@@ -656,7 +656,7 @@ async function save(type){
     renderHero();renderSidebar();
     pendingStrike=null;updateStrikeBtns();
     // Im Hintergrund speichern
-    fetch("/api/member/strikes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({rowIndex:selected.rowIndex,strikes:strikeVal})})
+    fetch("/api/member/strikes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({rowIndex:selected.rowIndex,name:selected.name,strikes:strikeVal})})
       .then(res=>{if(!res.ok)return res.json().then(e=>{throw new Error(e.error);});})
       .catch(e=>toast("❌ Strike-Fehler: "+e.message,"err"));
   }
@@ -667,7 +667,7 @@ async function save(type){
 
 async function confirmDelete(){
   try{
-    const res=await fetch("/api/member/delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({rowIndex:selected.rowIndex})});
+    const res=await fetch("/api/member/delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({rowIndex:selected.rowIndex,name:selected.name})});
     if(res.status===401){window.location="/";return;}
     if(!res.ok){const e=await res.json();throw new Error(e.error||"Fehler");}
     const name=selected.name;
