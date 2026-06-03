@@ -18,7 +18,7 @@ if _creds_raw:
     _tmp.write(_creds_raw)
     _tmp.close()
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = _tmp.name
-CREDENTIALS_FILE = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", CREDENTIALS_FILE)
+CREDENTIALS_FILE = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", "credentials.json")
 
 
 # ─── Config ───────────────────────────────────────────────────────────────────
@@ -36,7 +36,7 @@ COL_NAME       = 3   # C
 COL_ID         = 4   # D
 COL_RANKS      = 5   # E
 COL_DATE       = 7   # G  (Date Joined)
-COL_URLAUB     = 8   # H  (Urlaub)
+COL_URLAUB     = 9   # I  (Urlaub)
 COL_STRIKES    = 11  # K  (Strikes)
 COL_CODENAME   = 12  # L  (Codename)
 
