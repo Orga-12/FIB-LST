@@ -2,6 +2,7 @@ import os, json, secrets, requests, tempfile
 from flask import Flask, redirect, request, session, send_file, jsonify, abort
 from google.oauth2.service_account import Credentials
 import gspread
+from googleapiclient.discovery import build
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -70,7 +71,7 @@ RANG_DEFAULTS = {
     "Trainee":               list(range(14, 17)),
 }
 
-COL = {"DN":2,"NAME":3,"ID":4,"RANG":5,"DATE":7,"URLAUB":8,"STRIKES":11,"CODENAME":12}
+COL = {"DN":2,"NAME":3,"ID":4,"RANG":5,"DATE":7,"URLAUB":9,"STRIKES":11,"CODENAME":12}
 DATA_START = 12
 
 # ─── Google Sheets ────────────────────────────────────────────────────────────
@@ -83,6 +84,41 @@ def get_sheet():
 
 def get_db_sheet():
     return get_client().open_by_key(SPREADSHEET_ID).worksheet(DB_SHEET_NAME)
+
+def find_row_by_name(sheet, name: str):
+    """Sucht die aktuelle Zeilennummer eines Mitglieds anhand des Namens."""
+    col_c = sheet.col_values(COL["NAME"])
+    for i, val in enumerate(col_c, start=1):
+        if val.strip().lower() == name.strip().lower() and i >= DATA_START:
+            return i
+    return None
+
+def copy_row_format_srv(spreadsheet_id, source_row, target_row, creds):
+    """Kopiert Format von source_row auf target_row via Sheets API v4."""
+    try:
+        service = build("sheets", "v4", credentials=creds)
+        meta = service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
+        sheet_id = None
+        for s in meta["sheets"]:
+            if s["properties"]["title"] == SHEET_NAME:
+                sheet_id = s["properties"]["sheetId"]
+                break
+        if sheet_id is None:
+            return
+        requests = [{
+            "copyPaste": {
+                "source":      {"sheetId": sheet_id, "startRowIndex": source_row-1, "endRowIndex": source_row, "startColumnIndex": 0, "endColumnIndex": 30},
+                "destination": {"sheetId": sheet_id, "startRowIndex": target_row-1, "endRowIndex": target_row, "startColumnIndex": 0, "endColumnIndex": 30},
+                "pasteType": "PASTE_FORMAT",
+                "pasteOrientation": "NORMAL"
+            }
+        }]
+        service.spreadsheets().batchUpdate(
+            spreadsheetId=spreadsheet_id,
+            body={"requests": requests}
+        ).execute()
+    except Exception as e:
+        print(f"⚠️ Format copy failed: {e}")
 
 # ─── Discord OAuth2 ───────────────────────────────────────────────────────────
 def is_logged_in():
@@ -193,9 +229,13 @@ def api_save_permissions():
         abort(401)
     try:
         data      = request.json
-        row_index = data["rowIndex"]
         perms     = data["perms"]
-        sheet = get_sheet()
+        name      = data.get("name", "")
+        sheet     = get_sheet()
+        # Zeilennummer live aus Sheet lesen
+        row_index = find_row_by_name(sheet, name) if name else data.get("rowIndex")
+        if not row_index:
+            return jsonify({"error": f"Mitglied '{name}' nicht gefunden"}), 404
         # Alle 14 Berechtigungen in einem batch update → viel schneller
         updates = []
         for p in PERMISSIONS:
@@ -221,8 +261,12 @@ def api_update_member():
         abort(401)
     try:
         data      = request.json
-        row_index = data["rowIndex"]
+        name      = data.get("originalName") or data.get("name", "")
         sheet     = get_sheet()
+        # Zeilennummer live aus Sheet lesen
+        row_index = find_row_by_name(sheet, name) if name else data.get("rowIndex")
+        if not row_index:
+            return jsonify({"error": f"Mitglied '{name}' nicht gefunden"}), 404
 
         # Batch update alle Felder auf einmal
         updates = []
@@ -258,9 +302,12 @@ def api_update_strikes():
         abort(401)
     try:
         data      = request.json
-        row_index = data["rowIndex"]
         strikes   = data["strikes"]
+        name      = data.get("name", "")
         sheet     = get_sheet()
+        row_index = find_row_by_name(sheet, name) if name else data.get("rowIndex")
+        if not row_index:
+            return jsonify({"error": f"Mitglied '{name}' nicht gefunden"}), 404
         sheet.update_cell(row_index, COL["STRIKES"], strikes)
         print(f"[{datetime.now():%d.%m.%Y %H:%M}] {session['discord_user']['username']} → Strike {strikes} Zeile {row_index}")
         return jsonify({"ok": True})
@@ -274,8 +321,11 @@ def api_delete_member():
         abort(401)
     try:
         data      = request.json
-        row_index = data["rowIndex"]
+        name      = data.get("name", "")
         sheet     = get_sheet()
+        row_index = find_row_by_name(sheet, name) if name else data.get("rowIndex")
+        if not row_index:
+            return jsonify({"error": f"Mitglied '{name}' nicht gefunden"}), 404
         sheet.delete_rows(row_index)
         print(f"[{datetime.now():%d.%m.%Y %H:%M}] {session['discord_user']['username']} → Zeile {row_index} gelöscht")
         return jsonify({"ok": True})
@@ -383,6 +433,14 @@ def api_member_add():
 
         if must_insert:
             sheet.insert_row([], insert_at)
+
+        # Format von der Zeile darüber kopieren
+        if insert_at - 1 >= DATA_START:
+            try:
+                creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES_SHEETS)
+                copy_row_format_srv(SPREADSHEET_ID, insert_at - 1, insert_at, creds)
+            except Exception as fmt_err:
+                print(f"⚠️ Format copy: {fmt_err}")
 
         # Formulas for DN and ID
         formel_dn = f'=WENN(C{insert_at}=""; ""; WENNFEHLER(FILTER(Tabellenblatt37!E12:E295; Tabellenblatt37!B12:B295 = C{insert_at}); "/"))'
