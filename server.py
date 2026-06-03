@@ -120,6 +120,35 @@ def find_row_by_name(sheet, name: str):
             return i
     return None
 
+def zeile_fuer_rang_srv(sheet, rang: str):
+    """Findet die Einfügezeile für einen Rang in der Mitarbeiterliste."""
+    rows     = sheet.get_all_values()
+    rang_col = COL["RANG"] - 1
+    name_col = COL["NAME"] - 1
+    gruppe_ende = None
+    in_gruppe   = False
+
+    for i, row in enumerate(rows[DATA_START-1:], start=DATA_START):
+        rr = row[rang_col].strip() if len(row) > rang_col else ""
+        rn = row[name_col].strip() if len(row) > name_col else ""
+        if rr == rang and rn:
+            in_gruppe   = True
+            gruppe_ende = i
+        elif in_gruppe and not rn:
+            return (i, True)
+        elif in_gruppe and rr != rang and rn:
+            return (i, True)
+
+    if gruppe_ende:
+        return (gruppe_ende + 1, True)
+
+    # Rang nicht gefunden → ans Ende
+    col_c = sheet.col_values(COL["NAME"])
+    for i, v in enumerate(col_c[DATA_START-1:], start=DATA_START):
+        if not v.strip():
+            return (i, False)
+    return (len(col_c) + 1, False)
+
 def copy_row_format_srv(spreadsheet_id, source_row, target_row, creds):
     """Kopiert Format von source_row auf target_row via Sheets API v4."""
     try:
@@ -298,36 +327,98 @@ def api_update_member():
         if not row_index:
             return jsonify({"error": f"Mitglied '{name}' nicht gefunden"}), 404
 
-        # Batch update alle Felder auf einmal
-        updates = []
-        col_map = {"name": COL["NAME"], "codename": COL["CODENAME"], "rang": COL["RANG"],
-                   "date": COL["DATE"], "urlaub": COL["URLAUB"]}
-        for field, col in col_map.items():
-            if field in data:
-                col_letter = chr(64 + col) if col <= 26 else chr(64 + (col-1)//26) + chr(65 + (col-1)%26)
-                updates.append({"range": f"{SHEET_NAME}!{col_letter}{row_index}", "values": [[data[field]]]})
-        if updates:
-            sheet.spreadsheet.values_batch_update({"valueInputOption": "RAW", "data": updates})
+        new_rang   = data.get("rang", "")
+        old_rang   = sheet.cell(row_index, COL["RANG"]).value or ""
+        rang_changed = "rang" in data and new_rang != old_rang and data.get("updatePerms")
 
-        # If rang changed → update default permissions too (batch)
-        if "rang" in data and data.get("updatePerms"):
-            rang = data["rang"]
-            default_cols = RANG_DEFAULTS.get(rang, [])
+        if rang_changed:
+            # ── Rang geändert → Zeile verschieben ──────────────────────────────
+            # Alle aktuellen Daten der Zeile lesen
+            row_data = sheet.row_values(row_index)
+            while len(row_data) < 28:
+                row_data.append("")
+
+            # Alte Zeile löschen + Trennzeile danach falls leer
+            sheet.delete_rows(row_index)
+
+            # Neue Position in der Zielgruppe finden
+            zeile_neu, _ = zeile_fuer_rang_srv(sheet, new_rang)
+
+            # Neue Zeile einfügen
+            sheet.insert_row([], zeile_neu)
+
+            # Format von Zeile darüber kopieren
+            if zeile_neu - 1 >= DATA_START:
+                try:
+                    creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES_SHEETS)
+                    copy_row_format_srv(SPREADSHEET_ID, zeile_neu - 1, zeile_neu, creds)
+                except Exception as e:
+                    print(f"⚠️ Format: {e}")
+
+            # Daten schreiben — Name, Datum, Codename, Strikes aus alter Zeile
+            updates = []
+            col_map = {
+                COL["NAME"]:     row_data[COL["NAME"]-1],
+                COL["DATE"]:     row_data[COL["DATE"]-1],
+                COL["URLAUB"]:   row_data[COL["URLAUB"]-1],
+                COL["STRIKES"]:  row_data[COL["STRIKES"]-1],
+                COL["CODENAME"]: row_data[COL["CODENAME"]-1],
+                COL["RANG"]:     new_rang,
+            }
+            if data.get("name"):     col_map[COL["NAME"]]     = data["name"]
+            if data.get("codename"): col_map[COL["CODENAME"]] = data["codename"]
+            if data.get("date"):     col_map[COL["DATE"]]      = data["date"]
+            if data.get("urlaub"):   col_map[COL["URLAUB"]]    = data["urlaub"]
+
+            for col, val in col_map.items():
+                col_letter = chr(64+col) if col <= 26 else chr(64+(col-1)//26)+chr(65+(col-1)%26)
+                updates.append({"range": f"{SHEET_NAME}!{col_letter}{zeile_neu}", "values": [[val]]})
+
+            # Formeln für DN und ID
+            formel_dn = f'=WENN(C{zeile_neu}=""; ""; WENNFEHLER(FILTER(Tabellenblatt37!E12:E295; Tabellenblatt37!B12:B295 = C{zeile_neu}); "/"))'
+            formel_id = f'=WENN(C{zeile_neu}=""; ""; WENNFEHLER(FILTER(Tabellenblatt37!$A$1:$A$245; Tabellenblatt37!$B$1:$B$245 = C{zeile_neu}); "/"))'
+            updates.append({"range": f"{SHEET_NAME}!B{zeile_neu}", "values": [[formel_dn]]})
+            updates.append({"range": f"{SHEET_NAME}!D{zeile_neu}", "values": [[formel_id]]})
+
+            sheet.spreadsheet.values_batch_update({"valueInputOption": "USER_ENTERED", "data": updates})
+
+            # Standard-Berechtigungen nach neuem Rang
+            default_cols = RANG_DEFAULTS.get(new_rang, [])
             perm_updates = []
             for p in PERMISSIONS:
                 val = "✓" if p["col"] in default_cols else "✗"
-                col_letter = chr(64 + p["col"]) if p["col"] <= 26 else chr(64 + (p["col"]-1)//26) + chr(65 + (p["col"]-1)%26)
-                perm_updates.append({"range": f"{SHEET_NAME}!{col_letter}{row_index}", "values": [[val]]})
+                col_letter = chr(64+p["col"]) if p["col"] <= 26 else chr(64+(p["col"]-1)//26)+chr(65+(p["col"]-1)%26)
+                perm_updates.append({"range": f"{SHEET_NAME}!{col_letter}{zeile_neu}", "values": [[val]]})
             sheet.spreadsheet.values_batch_update({"valueInputOption": "RAW", "data": perm_updates})
 
+            # Trennzeile danach einfügen
+            try:
+                trenn = zeile_neu + 1
+                sheet.insert_row([], trenn)
+                creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES_SHEETS)
+                copy_row_format_srv(SPREADSHEET_ID, 42, trenn, creds)
+            except Exception as e:
+                print(f"⚠️ Trennzeile: {e}")
+
+        else:
+            # ── Kein Rang-Wechsel → nur Felder updaten ─────────────────────────
+            updates = []
+            col_map_f = {"name": COL["NAME"], "codename": COL["CODENAME"], "rang": COL["RANG"],
+                       "date": COL["DATE"], "urlaub": COL["URLAUB"]}
+            for field, col in col_map_f.items():
+                if field in data:
+                    col_letter = chr(64+col) if col <= 26 else chr(64+(col-1)//26)+chr(65+(col-1)%26)
+                    updates.append({"range": f"{SHEET_NAME}!{col_letter}{row_index}", "values": [[data[field]]]})
+            if updates:
+                sheet.spreadsheet.values_batch_update({"valueInputOption": "RAW", "data": updates})
+
         user = session['discord_user']['username']
-        new_rang = data.get("rang", "")
-        if data.get("updatePerms"):
-            log_action(user, "Uprank/Downrank", name, f"→ {new_rang}")
+        if rang_changed:
+            log_action(user, "Uprank/Downrank", name, f"{old_rang} → {new_rang}")
         else:
             log_action(user, "Bearbeitet", name, ", ".join([k for k in ["name","rang","urlaub","codename"] if k in data]))
         print(f"[{datetime.now():%d.%m.%Y %H:%M}] {user} → Member update {name}")
-        return jsonify({"ok": True})
+        return jsonify({"ok": True, "moved": rang_changed})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
