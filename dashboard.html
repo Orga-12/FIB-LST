@@ -199,6 +199,36 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 #toast.ok{border-color:rgba(34,197,94,.3);color:var(--green)}
 #toast.err{border-color:rgba(239,68,68,.3);color:var(--red)}
 #toast.info{border-color:rgba(201,168,76,.3);color:var(--gold)}
+
+/* LOG PAGE */
+#log-page{display:none;flex:1;overflow-y:auto;background:var(--bg);padding:1.5rem}
+#log-page.show{display:block}
+.log-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem;flex-wrap:wrap;gap:.8rem}
+.log-title{font-family:var(--head);font-size:1.4rem;font-weight:700;color:#fff;letter-spacing:.04em}
+.log-online{display:flex;align-items:center;gap:.5rem;font-family:var(--mono);font-size:.72rem;color:var(--muted)}
+.online-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);flex-shrink:0}
+.log-refresh{background:var(--s2);border:1px solid var(--border2);border-radius:6px;color:var(--muted);padding:.35rem .8rem;font-size:.76rem;cursor:pointer;font-family:var(--body);transition:all .15s}
+.log-refresh:hover{border-color:var(--gold2);color:var(--gold)}
+.online-users{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:.9rem 1.2rem;margin-bottom:1.2rem;display:flex;align-items:center;gap:.8rem;flex-wrap:wrap}
+.online-label{font-family:var(--mono);font-size:.62rem;letter-spacing:.15em;text-transform:uppercase;color:var(--muted)}
+.online-chip{display:flex;align-items:center;gap:.4rem;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:999px;padding:.2rem .7rem;font-size:.75rem;color:var(--green)}
+.online-chip-dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+.log-list{display:flex;flex-direction:column;gap:.5rem}
+.log-item{background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:.75rem 1rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;transition:border-color .15s}
+.log-item:hover{border-color:var(--border2)}
+.log-time{font-family:var(--mono);font-size:.65rem;color:var(--muted);min-width:130px;flex-shrink:0}
+.log-action-badge{font-family:var(--mono);font-size:.65rem;font-weight:700;padding:.2rem .6rem;border-radius:4px;flex-shrink:0;letter-spacing:.05em}
+.log-a-perms{background:rgba(59,130,246,.1);color:#60a5fa;border:1px solid rgba(59,130,246,.2)}
+.log-a-rank{background:rgba(201,168,76,.1);color:var(--gold);border:1px solid rgba(201,168,76,.2)}
+.log-a-strike{background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.2)}
+.log-a-delete{background:rgba(239,68,68,.15);color:#ff6b6b;border:1px solid rgba(239,68,68,.3)}
+.log-a-add{background:rgba(34,197,94,.1);color:var(--green);border:1px solid rgba(34,197,94,.2)}
+.log-a-edit{background:rgba(168,85,247,.1);color:#c084fc;border:1px solid rgba(168,85,247,.2)}
+.log-user{font-size:.82rem;font-weight:600;color:var(--text)}
+.log-target{font-size:.82rem;color:var(--muted)}
+.log-target strong{color:var(--text)}
+.log-detail{font-family:var(--mono);font-size:.7rem;color:#3a4a5a;margin-left:auto}
+.log-empty{text-align:center;padding:3rem;color:var(--muted);font-size:.85rem}
 </style>
 </head>
 <body>
@@ -282,6 +312,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
   <select class="top-select" id="rang-filter"><option value="">Alle Ränge</option></select>
   <button class="top-btn" onclick="loadMembers()">↻ Laden</button>
   <button class="top-btn" id="add-btn" onclick="openAddModal()" style="background:rgba(201,168,76,.1);border-color:rgba(201,168,76,.3);color:var(--gold);font-weight:700">+ Hinzufügen</button>
+  <button class="top-btn" id="log-btn" onclick="toggleLogPage()" style="background:rgba(59,130,246,.08);border-color:rgba(59,130,246,.2);color:#60a5fa">📋 Logs</button>
   <div class="top-right">
     <div class="spip" id="spip"></div>
     <span id="status-txt">Verbinde...</span>
@@ -385,6 +416,28 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
         </div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- LOG PAGE -->
+<div id="log-page">
+  <div class="log-header">
+    <div class="log-title">📋 Aktivitäts-Log</div>
+    <div style="display:flex;gap:.6rem;align-items:center">
+      <div class="log-online">
+        <div class="online-dot"></div>
+        <span id="online-count">0 online</span>
+      </div>
+      <button class="log-refresh" onclick="loadLog()">↻ Aktualisieren</button>
+      <button class="log-refresh" onclick="toggleLogPage()" style="color:var(--muted)">✕ Schließen</button>
+    </div>
+  </div>
+  <div class="online-users" id="online-users">
+    <span class="online-label">Gerade aktiv:</span>
+    <span id="online-list" style="color:var(--muted);font-size:.8rem">Lade...</span>
+  </div>
+  <div class="log-list" id="log-list">
+    <div class="log-empty">Noch keine Aktivitäten aufgezeichnet</div>
   </div>
 </div>
 
@@ -813,6 +866,87 @@ async function submitStep2(){
 document.getElementById("add-modal-overlay").addEventListener("click",function(e){
   if(e.target===this)closeAddModal();
 });
+
+
+// ── LOG PAGE ──────────────────────────────────────────────────────────────────
+let logVisible = false;
+
+function toggleLogPage() {
+  logVisible = !logVisible;
+  const logPage = document.getElementById("log-page");
+  const main    = document.getElementById("main");
+  const btn     = document.getElementById("log-btn");
+  if (logVisible) {
+    logPage.classList.add("show");
+    main.style.display = "none";
+    btn.style.background = "rgba(59,130,246,.2)";
+    btn.style.borderColor = "#3b82f6";
+    btn.style.color = "#93c5fd";
+    loadLog();
+  } else {
+    logPage.classList.remove("show");
+    main.style.display = "flex";
+    btn.style.background = "rgba(59,130,246,.08)";
+    btn.style.borderColor = "rgba(59,130,246,.2)";
+    btn.style.color = "#60a5fa";
+  }
+}
+
+const ACTION_CLASSES = {
+  "Berechtigungen": "log-a-perms",
+  "Uprank/Downrank": "log-a-rank",
+  "Strike gesetzt":  "log-a-strike",
+  "Entfernt":        "log-a-delete",
+  "Hinzugefügt":     "log-a-add",
+  "Bearbeitet":      "log-a-edit",
+};
+
+async function loadLog() {
+  try {
+    // Load active users
+    const uRes = await fetch("/api/active-users");
+    if (uRes.ok) {
+      const users = await uRes.json();
+      document.getElementById("online-count").textContent = `${users.length} online`;
+      const listEl = document.getElementById("online-list");
+      if (users.length === 0) {
+        listEl.innerHTML = '<span style="color:var(--muted)">Niemand aktiv</span>';
+      } else {
+        listEl.innerHTML = users.map(u =>
+          `<span class="online-chip"><span class="online-chip-dot"></span>${u}</span>`
+        ).join(" ");
+      }
+    }
+
+    // Load log entries
+    const lRes = await fetch("/api/log");
+    if (!lRes.ok) return;
+    const entries = await lRes.json();
+    const listEl = document.getElementById("log-list");
+
+    if (entries.length === 0) {
+      listEl.innerHTML = '<div class="log-empty">Noch keine Aktivitäten aufgezeichnet</div>';
+      return;
+    }
+
+    listEl.innerHTML = entries.map(e => {
+      const cls = ACTION_CLASSES[e.action] || "log-a-edit";
+      return `
+        <div class="log-item">
+          <span class="log-time">${e.time}</span>
+          <span class="log-action-badge ${cls}">${e.action}</span>
+          <span class="log-user">${e.user}</span>
+          <span class="log-target">→ <strong>${e.target}</strong></span>
+          ${e.detail ? `<span class="log-detail">${e.detail}</span>` : ""}
+        </div>`;
+    }).join("");
+  } catch(err) {
+    console.error("Log load error:", err);
+  }
+}
+
+// Auto-refresh log every 30 seconds when visible
+setInterval(() => { if (logVisible) loadLog(); }, 30000);
 
 document.getElementById("search").addEventListener("input",renderSidebar);
 document.getElementById("rang-filter").addEventListener("change",renderSidebar);
