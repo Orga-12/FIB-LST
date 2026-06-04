@@ -347,11 +347,24 @@ def api_update_member():
             # Neue Zeile einfügen
             sheet.insert_row([], zeile_neu)
 
-            # Format von Zeile darüber kopieren
-            if zeile_neu - 1 >= DATA_START:
+            # Format vom letzten Mitglied der Zielgruppe kopieren
+            # Suche die letzte Zeile mit dem neuen Rang als Format-Quelle
+            fmt_quelle = zeile_neu - 1
+            try:
+                alle_rows = sheet.get_all_values()
+                for i in range(zeile_neu - 2, DATA_START - 2, -1):
+                    if i < len(alle_rows):
+                        zeile_rang = alle_rows[i][COL["RANG"]-1].strip() if len(alle_rows[i]) > COL["RANG"]-1 else ""
+                        zeile_name = alle_rows[i][COL["NAME"]-1].strip() if len(alle_rows[i]) > COL["NAME"]-1 else ""
+                        if zeile_rang == new_rang and zeile_name:
+                            fmt_quelle = i + 1
+                            break
+            except:
+                pass
+            if fmt_quelle >= DATA_START:
                 try:
                     creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES_SHEETS)
-                    copy_row_format_srv(SPREADSHEET_ID, zeile_neu - 1, zeile_neu, creds)
+                    copy_row_format_srv(SPREADSHEET_ID, fmt_quelle, zeile_neu, creds)
                 except Exception as e:
                     print(f"⚠️ Format: {e}")
 
@@ -382,11 +395,26 @@ def api_update_member():
 
             sheet.spreadsheet.values_batch_update({"valueInputOption": "USER_ENTERED", "data": updates})
 
-            # Standard-Berechtigungen nach neuem Rang
+            # Berechtigungen je nach Up/Downrank anpassen
             default_cols = RANG_DEFAULTS.get(new_rang, [])
+            old_default_cols = RANG_DEFAULTS.get(old_rang, [])
+            is_uprank = RANG_ORDER.index(new_rang) < RANG_ORDER.index(old_rang) if new_rang in RANG_ORDER and old_rang in RANG_ORDER else False
+
+            # Alte Berechtigungen aus row_data lesen
+            alte_perms = {}
+            for p in PERMISSIONS:
+                alte_perms[p["col"]] = row_data[p["col"]-1].strip() == "✓" if len(row_data) >= p["col"] else False
+
             perm_updates = []
             for p in PERMISSIONS:
-                val = "✓" if p["col"] in default_cols else "✗"
+                hat_es = alte_perms.get(p["col"], False)
+                rang_gibt_es = p["col"] in default_cols
+                if is_uprank:
+                    # Uprank: behalten was er hat + neue dazu
+                    val = "✓" if (hat_es or rang_gibt_es) else "✗"
+                else:
+                    # Downrank: auf Standard des neuen Rangs setzen
+                    val = "✓" if rang_gibt_es else "✗"
                 col_letter = chr(64+p["col"]) if p["col"] <= 26 else chr(64+(p["col"]-1)//26)+chr(65+(p["col"]-1)%26)
                 perm_updates.append({"range": f"{SHEET_NAME}!{col_letter}{zeile_neu}", "values": [[val]]})
             sheet.spreadsheet.values_batch_update({"valueInputOption": "RAW", "data": perm_updates})
