@@ -677,7 +677,7 @@ async function save(type){
     const newUrlaub=document.getElementById("edit-urlaub").value.trim();
     if(!newName){toast("Name darf nicht leer sein","err");return;}
     const oldRang=selected.rang;
-    const updatePerms=newRang!==oldRang;
+    const updatePerms=true; // immer Berechtigungen + Rang-Format anpassen
     try{
       const res=await fetch("/api/member/update",{method:"POST",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({rowIndex:selected.rowIndex,originalName:selected.name,name:newName,codename:newCode,rang:newRang,date:newDate,urlaub:newUrlaub,updatePerms})});
