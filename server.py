@@ -99,6 +99,21 @@ RANG_DEFAULTS = {
 }
 
 COL = {"DN":2,"NAME":3,"ID":4,"RANG":5,"DATE":7,"URLAUB":9,"STRIKES":11,"CODENAME":12}
+
+VORLAGE_SHEET = "Vorlage-Rang"
+RANG_VORLAGE_ROW = {
+    "FIB-Director":          1,
+    "Director of Integrity": 2,
+    "Curator":               3,
+    "Chief of FIBCO":        4,
+    "Deputy Chief of FIBCO": 5,
+    "Supervisor":            6,
+    "Senior Mitglied":       7,
+    "Counsel General":       8,
+    "Mitglied":              9,
+    "FIBCO Veteran":         10,
+    "Trainee":               11,
+}
 DATA_START = 12
 
 # ─── Google Sheets ────────────────────────────────────────────────────────────
@@ -119,6 +134,59 @@ def find_row_by_name(sheet, name: str):
         if val.strip().lower() == name.strip().lower() and i >= DATA_START:
             return i
     return None
+
+def copy_rang_format(spreadsheet_id: str, rang: str, target_row: int, creds):
+    """Kopiert nur Spalte E Format aus Vorlage-Rang Sheet auf die Zielzeile."""
+    try:
+        service = build("sheets", "v4", credentials=creds)
+        meta    = service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
+
+        src_sheet_id = None
+        dst_sheet_id = None
+        for s in meta["sheets"]:
+            t = s["properties"]["title"]
+            if t == VORLAGE_SHEET:
+                src_sheet_id = s["properties"]["sheetId"]
+            if t == SHEET_NAME:
+                dst_sheet_id = s["properties"]["sheetId"]
+
+        if src_sheet_id is None or dst_sheet_id is None:
+            print(f"⚠️ Sheet nicht gefunden: {VORLAGE_SHEET}")
+            return
+
+        vorlage_row = RANG_VORLAGE_ROW.get(rang)
+        if not vorlage_row:
+            print(f"⚠️ Kein Vorlage-Eintrag für Rang: {rang}")
+            return
+
+        # Nur Spalte E (Index 4) kopieren
+        requests = [{
+            "copyPaste": {
+                "source": {
+                    "sheetId":        src_sheet_id,
+                    "startRowIndex":  vorlage_row - 1,
+                    "endRowIndex":    vorlage_row,
+                    "startColumnIndex": 4,  # Spalte E
+                    "endColumnIndex":   5,
+                },
+                "destination": {
+                    "sheetId":        dst_sheet_id,
+                    "startRowIndex":  target_row - 1,
+                    "endRowIndex":    target_row,
+                    "startColumnIndex": 4,
+                    "endColumnIndex":   5,
+                },
+                "pasteType":        "PASTE_FORMAT",
+                "pasteOrientation": "NORMAL"
+            }
+        }]
+        service.spreadsheets().batchUpdate(
+            spreadsheetId=spreadsheet_id,
+            body={"requests": requests}
+        ).execute()
+        print(f"✅ Rang-Format kopiert: {rang} → Zeile {target_row}")
+    except Exception as e:
+        print(f"⚠️ copy_rang_format: {e}")
 
 def zeile_fuer_rang_srv(sheet, rang: str):
     """Findet die Einfügezeile für einen Rang in der Mitarbeiterliste."""
@@ -378,6 +446,13 @@ def api_update_member():
                 except Exception as e:
                     print(f"⚠️ Format: {e}")
 
+            # Rang-Format aus Vorlage-Rang Sheet (nur Spalte E)
+            try:
+                creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES_SHEETS)
+                copy_rang_format(SPREADSHEET_ID, new_rang, zeile_neu, creds)
+            except Exception as e:
+                print(f"⚠️ Rang-Format: {e}")
+
             # Daten schreiben — Name, Datum, Codename, Strikes aus alter Zeile
             updates = []
             col_map = {
@@ -613,6 +688,13 @@ def api_member_add():
                 copy_row_format_srv(SPREADSHEET_ID, insert_at - 1, insert_at, creds)
             except Exception as fmt_err:
                 print(f"⚠️ Format Mitglied: {fmt_err}")
+
+        # Rang-Format aus Vorlage-Rang Sheet kopieren (nur Spalte E)
+        try:
+            creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES_SHEETS)
+            copy_rang_format(SPREADSHEET_ID, rang, insert_at, creds)
+        except Exception as fmt_err:
+            print(f"⚠️ Rang-Format: {fmt_err}")
 
         # Trennzeile einfügen — nur wenn danach keine leere Zeile ist
         try:
