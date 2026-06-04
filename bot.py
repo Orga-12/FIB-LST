@@ -321,6 +321,14 @@ async def mitglied_hinzufuegen(
 
         zeile, muss_einfuegen = zeile_fuer_rang(sheet, rang)
 
+        # Sofort antworten damit Discord nicht abbricht
+        farbe_preview = RANG_FARBEN.get(rang, 0x2ECC71)
+        embed_preview = discord.Embed(title="⏳ Wird eingetragen...", color=farbe_preview)
+        embed_preview.add_field(name="Name",    value=name, inline=True)
+        embed_preview.add_field(name="Rang",    value=rang, inline=True)
+        embed_preview.set_footer(text="Formatierung und Trennzeile werden im Hintergrund gesetzt...")
+        await interaction.followup.send(embed=embed_preview, ephemeral=True)
+
         # Neue Zeile einfügen
         sheet.insert_row([], zeile)
 
@@ -385,7 +393,7 @@ async def mitglied_hinzufuegen(
         embed.add_field(name="DN/ID",       value="Wird per Formel aus Tabellenblatt37 gezogen", inline=False)
         embed.add_field(name=f"✓ Berechtigungen ({len(gesetzte)})", value=perm_text[:1024], inline=False)
         embed.set_footer(text=f"Eingetragen in Zeile {zeile}")
-        await interaction.followup.send(embed=embed, ephemeral=True)
+        await interaction.edit_original_response(embed=embed)
 
     except Exception as e:
         await interaction.followup.send(f"❌ Fehler: {e}", ephemeral=True)
@@ -434,12 +442,74 @@ async def rang_aendern(interaction: discord.Interaction, name: str, neuer_rang: 
             return
 
         alter_rang = sheet.cell(row, COL_RANKS).value or "Unbekannt"
-        sheet.update_cell(row, COL_RANKS, neuer_rang)
+
+        # Zeile verschieben in die richtige Rang-Gruppe
+        row_data = sheet.row_values(row)
+        while len(row_data) < 28:
+            row_data.append("")
+
+        # Alte Zeile löschen
+        sheet.delete_rows(row)
+
+        # Neue Position finden
+        zeile_neu, _ = zeile_fuer_rang(sheet, neuer_rang)
+
+        # Neue Zeile einfügen
+        sheet.insert_row([], zeile_neu)
+
+        # Format kopieren
+        if zeile_neu - 1 >= DATA_START_ROW:
+            try:
+                creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)
+                copy_row_format(SPREADSHEET_ID, zeile_neu - 1, zeile_neu, creds)
+            except Exception as fe:
+                print(f"⚠️ Format: {fe}")
+
+        # Daten zurückschreiben
+        formel_dn = f'=WENN(C{zeile_neu}=""; ""; WENNFEHLER(FILTER(Tabellenblatt37!E12:E295; Tabellenblatt37!B12:B295 = C{zeile_neu}); "/"))'
+        formel_id = f'=WENN(C{zeile_neu}=""; ""; WENNFEHLER(FILTER(Tabellenblatt37!$A$1:$A$245; Tabellenblatt37!$B$1:$B$245 = C{zeile_neu}); "/"))'
+        sheet.update_cell(zeile_neu, COL_NAME,     row_data[COL_NAME-1])
+        sheet.update_cell(zeile_neu, COL_DN,        formel_dn)
+        sheet.update_cell(zeile_neu, COL_ID,        formel_id)
+        sheet.update_cell(zeile_neu, COL_RANKS,     neuer_rang)
+        sheet.update_cell(zeile_neu, COL_DATE,      row_data[COL_DATE-1])
+        sheet.update_cell(zeile_neu, COL_URLAUB,    row_data[COL_URLAUB-1])
+        sheet.update_cell(zeile_neu, COL_STRIKES,   row_data[COL_STRIKES-1])
+        sheet.update_cell(zeile_neu, COL_CODENAME,  row_data[COL_CODENAME-1])
+
+        # Berechtigungen je nach Up/Downrank
+        default_cols = RANG_DEFAULTS.get(neuer_rang, [])
+        is_uprank = RAENGE.index(neuer_rang) < RAENGE.index(alter_rang) if neuer_rang in RAENGE and alter_rang in RAENGE else False
+        alte_perms = {}
+        for col, pname in PERMISSIONS:
+            alte_perms[col] = row_data[col-1].strip() == "✓" if len(row_data) >= col else False
+        perm_updates = []
+        for col, perm_name in PERMISSIONS:
+            hat_es = alte_perms.get(col, False)
+            rang_gibt_es = col in default_cols
+            if is_uprank:
+                val = "✓" if (hat_es or rang_gibt_es) else "✗"
+            else:
+                val = "✓" if rang_gibt_es else "✗"
+            col_letter = chr(64+col) if col <= 26 else chr(64+(col-1)//26)+chr(65+(col-1)%26)
+            perm_updates.append({"range": f"{col_letter}{zeile_neu}", "values": [[val]]})
+        if perm_updates:
+            sheet.spreadsheet.values_batch_update({"valueInputOption": "RAW", "data": perm_updates})
+
+        # Trennzeile einfügen falls nötig
+        try:
+            col_c_vals   = sheet.col_values(COL_NAME)
+            trenn_zeile  = zeile_neu + 1
+            naechste_val = col_c_vals[trenn_zeile-1].strip() if len(col_c_vals) >= trenn_zeile else ""
+            if naechste_val != "":
+                sheet.insert_row([], trenn_zeile)
+                creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)
+                copy_row_format(SPREADSHEET_ID, 57, trenn_zeile, creds)
+        except Exception as te:
+            print(f"⚠️ Trennzeile: {te}")
 
         alter_idx = RAENGE.index(alter_rang) if alter_rang in RAENGE else 99
         neuer_idx = RAENGE.index(neuer_rang)
-
-        # Niedrigerer Index = höherer Rang in der Liste
         if neuer_idx < alter_idx:
             aktion, farbe = "⬆️ Uprank", 0x2ECC71
         elif neuer_idx > alter_idx:
@@ -706,6 +776,92 @@ async def datenbank_hinzufuegen(interaction: discord.Interaction, name: str, cod
         embed.add_field(name="Codename",    value=codename, inline=True)
         embed.add_field(name="Date Joined", value=datum,    inline=True)
         embed.set_footer(text="Person ist jetzt per Autocomplete bei /mitglied_hinzufuegen verfügbar")
+        await interaction.followup.send(embed=embed, ephemeral=True)
+    except Exception as e:
+        await interaction.followup.send(f"❌ Fehler: {e}", ephemeral=True)
+
+
+# ─── /berechtigungen_setzen ────────────────────────────────────────────────────
+@tree.command(name="berechtigungen_setzen", description="Einzelne Berechtigung eines Mitglieds ändern")
+@app_commands.describe(
+    name="Name des Mitglieds",
+    berechtigung="Welche Berechtigung",
+    wert="An oder Aus"
+)
+@app_commands.autocomplete(name=mitglieder_name_autocomplete)
+@app_commands.choices(berechtigung=[
+    app_commands.Choice(name=pname, value=str(col))
+    for col, pname in PERMISSIONS
+])
+@app_commands.choices(wert=[
+    app_commands.Choice(name="✓ An", value="an"),
+    app_commands.Choice(name="✗ Aus", value="aus"),
+])
+async def berechtigungen_setzen(interaction: discord.Interaction, name: str, berechtigung: str, wert: str):
+    await interaction.response.defer(ephemeral=True)
+    try:
+        sheet = get_mitglieder_sheet()
+        row = find_mitglied_row(sheet, name)
+        if not row:
+            await interaction.followup.send(f"❌ **{name}** nicht gefunden!", ephemeral=True)
+            return
+        col = int(berechtigung)
+        val = "✓" if wert == "an" else "✗"
+        sheet.update_cell(row, col, val)
+        perm_name = next((p for c, p in PERMISSIONS if c == col), "Unbekannt")
+        embed = discord.Embed(title="🔐 Berechtigung geändert", color=0x22C55E if wert=="an" else 0xEF4444)
+        embed.add_field(name="Mitglied",      value=name,      inline=True)
+        embed.add_field(name="Berechtigung",  value=perm_name, inline=True)
+        embed.add_field(name="Status",        value="✓ An" if wert=="an" else "✗ Aus", inline=True)
+        await interaction.followup.send(embed=embed, ephemeral=True)
+    except Exception as e:
+        await interaction.followup.send(f"❌ Fehler: {e}", ephemeral=True)
+
+# ─── /alle_berechtigungen_setzen ───────────────────────────────────────────────
+@tree.command(name="alle_berechtigungen_setzen", description="Alle Berechtigungen eines Mitglieds nach Rang zurücksetzen")
+@app_commands.describe(name="Name des Mitglieds")
+@app_commands.autocomplete(name=mitglieder_name_autocomplete)
+async def alle_berechtigungen_setzen(interaction: discord.Interaction, name: str):
+    await interaction.response.defer(ephemeral=True)
+    try:
+        sheet = get_mitglieder_sheet()
+        row = find_mitglied_row(sheet, name)
+        if not row:
+            await interaction.followup.send(f"❌ **{name}** nicht gefunden!", ephemeral=True)
+            return
+        rang = sheet.cell(row, COL_RANKS).value or ""
+        default_cols = RANG_DEFAULTS.get(rang, [])
+        perm_updates = []
+        for col, perm_name in PERMISSIONS:
+            val = "✓" if col in default_cols else "✗"
+            col_letter = chr(64+col) if col <= 26 else chr(64+(col-1)//26)+chr(65+(col-1)%26)
+            perm_updates.append({"range": f"{col_letter}{row}", "values": [[val]]})
+        if perm_updates:
+            sheet.spreadsheet.values_batch_update({"valueInputOption": "RAW", "data": perm_updates})
+        embed = discord.Embed(title="🔐 Berechtigungen zurückgesetzt", color=0x3498DB)
+        embed.add_field(name="Mitglied", value=name, inline=True)
+        embed.add_field(name="Rang",     value=rang, inline=True)
+        embed.add_field(name="Gesetzt",  value=f"{len(default_cols)}/{len(PERMISSIONS)}", inline=True)
+        await interaction.followup.send(embed=embed, ephemeral=True)
+    except Exception as e:
+        await interaction.followup.send(f"❌ Fehler: {e}", ephemeral=True)
+
+# ─── /datum_aendern ────────────────────────────────────────────────────────────
+@tree.command(name="datum_aendern", description="Date Joined eines Mitglieds ändern")
+@app_commands.describe(name="Name des Mitglieds", datum="Neues Datum (z.B. 01.06.2026)")
+@app_commands.autocomplete(name=mitglieder_name_autocomplete)
+async def datum_aendern(interaction: discord.Interaction, name: str, datum: str):
+    await interaction.response.defer(ephemeral=True)
+    try:
+        sheet = get_mitglieder_sheet()
+        row = find_mitglied_row(sheet, name)
+        if not row:
+            await interaction.followup.send(f"❌ **{name}** nicht gefunden!", ephemeral=True)
+            return
+        sheet.update_cell(row, COL_DATE, datum)
+        embed = discord.Embed(title="📅 Datum geändert", color=0x3498DB)
+        embed.add_field(name="Mitglied", value=name,  inline=True)
+        embed.add_field(name="Datum",    value=datum, inline=True)
         await interaction.followup.send(embed=embed, ephemeral=True)
     except Exception as e:
         await interaction.followup.send(f"❌ Fehler: {e}", ephemeral=True)
