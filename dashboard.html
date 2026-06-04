@@ -666,7 +666,7 @@ async function save(type){
         if(!res.ok) return res.json().then(e=>{throw new Error(e.error||"Fehler");});
       })
       .catch(e=>{
-        toast("❌ Speichern fehlgeschlagen: "+e.message,"err");
+        toast("❌ Speichern fehlgeschlagen — bitte neu laden und nochmal versuchen","err");
       });
   }
   else if(type==='info'){
@@ -682,8 +682,13 @@ async function save(type){
       const res=await fetch("/api/member/update",{method:"POST",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({rowIndex:selected.rowIndex,originalName:selected.name,name:newName,codename:newCode,rang:newRang,date:newDate,urlaub:newUrlaub,updatePerms})});
       if(res.status===401){window.location="/";return;}
-      if(!res.ok){const e=await res.json();throw new Error(e.error||"Fehler");}
-      const result = await res.json();
+      if(!res.ok){
+        let errMsg="Server Fehler";
+        try{const e=await res.json();errMsg=e.error||errMsg;}catch(je){errMsg=`HTTP ${res.status} - Server nicht erreichbar, bitte neu laden`;}
+        throw new Error(errMsg);
+      }
+      let result={};
+      try{result=await res.json();}catch(je){result={ok:true};}
       // Update local state
       const idx=members.findIndex(m=>m.name===selected.name);
       if(idx>=0){Object.assign(members[idx],{name:newName,codename:newCode,rang:newRang,date:newDate,urlaub:newUrlaub});}
