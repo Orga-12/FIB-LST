@@ -398,7 +398,7 @@ def api_update_member():
 
         new_rang   = data.get("rang", "")
         old_rang   = sheet.cell(row_index, COL["RANG"]).value or ""
-        rang_changed = "rang" in data and new_rang != old_rang and data.get("updatePerms")
+        rang_changed = "rang" in data and new_rang != old_rang
 
         if rang_changed:
             # ── Rang geändert → Zeile verschieben ──────────────────────────────
