@@ -347,24 +347,34 @@ def api_update_member():
             # Neue Zeile einfügen
             sheet.insert_row([], zeile_neu)
 
-            # Format vom letzten Mitglied der Zielgruppe kopieren
-            # Suche die letzte Zeile mit dem neuen Rang als Format-Quelle
-            fmt_quelle = zeile_neu - 1
+            # Format-Quelle VOR insert_row suchen (Zeilen verschieben sich danach!)
+            # Suche letztes Mitglied der Zielgruppe als Format-Referenz
+            fmt_quelle = None
             try:
-                alle_rows = sheet.get_all_values()
-                for i in range(zeile_neu - 2, DATA_START - 2, -1):
-                    if i < len(alle_rows):
-                        zeile_rang = alle_rows[i][COL["RANG"]-1].strip() if len(alle_rows[i]) > COL["RANG"]-1 else ""
-                        zeile_name = alle_rows[i][COL["NAME"]-1].strip() if len(alle_rows[i]) > COL["NAME"]-1 else ""
-                        if zeile_rang == new_rang and zeile_name:
-                            fmt_quelle = i + 1
+                alle_rows_pre = sheet.get_all_values()
+                rang_col_i = COL["RANG"] - 1
+                name_col_i = COL["NAME"] - 1
+                for i in range(len(alle_rows_pre) - 1, DATA_START - 2, -1):
+                    if i < len(alle_rows_pre):
+                        zr = alle_rows_pre[i][rang_col_i].strip() if len(alle_rows_pre[i]) > rang_col_i else ""
+                        zn = alle_rows_pre[i][name_col_i].strip() if len(alle_rows_pre[i]) > name_col_i else ""
+                        if zr == new_rang and zn:
+                            fmt_quelle = i + 1  # 1-indexed
                             break
-            except:
-                pass
-            if fmt_quelle >= DATA_START:
+            except Exception as e:
+                print(f"⚠️ Format-Suche: {e}")
+
+            # Format kopieren NACH insert_row — Zeile hat sich um 1 verschoben
+            if fmt_quelle:
+                # Falls fmt_quelle >= zeile_neu wurde sie durch insert_row verschoben
+                fmt_copy_from = fmt_quelle + 1 if fmt_quelle >= zeile_neu else fmt_quelle
+            else:
+                fmt_copy_from = zeile_neu - 1
+
+            if fmt_copy_from >= DATA_START:
                 try:
                     creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES_SHEETS)
-                    copy_row_format_srv(SPREADSHEET_ID, fmt_quelle, zeile_neu, creds)
+                    copy_row_format_srv(SPREADSHEET_ID, fmt_copy_from, zeile_neu, creds)
                 except Exception as e:
                     print(f"⚠️ Format: {e}")
 
