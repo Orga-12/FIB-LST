@@ -51,7 +51,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 #sbscroll{flex:1;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain}
 #sbscroll::-webkit-scrollbar{width:3px}
 #sbscroll::-webkit-scrollbar-thumb{background:var(--border2)}
-.rhdr{padding:.38rem 1rem;font-family:var(--mono);font-size:.56rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;border-top:1px solid var(--border);position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;isolation:isolate}
+.rhdr{padding:.38rem 1rem;font-family:var(--mono);font-size:.56rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;border-top:1px solid var(--border);position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 .rc{font-size:.62rem;opacity:.55}
 .mrow{display:flex;align-items:center;gap:.6rem;padding:.55rem 1rem;cursor:pointer;border-bottom:1px solid rgba(20,27,40,.8);border-left:3px solid transparent;transition:background .1s,border-color .1s}
 .mrow:hover{background:#131a2a;transition:background .1s}
@@ -538,7 +538,7 @@ function renderSidebar(){
     const color=RANG_COLORS[rang]||"#64748b";
     const hdr=document.createElement("div");
     hdr.className="rhdr";
-    hdr.style.cssText=`color:${color};background:${color}0d;border-color:${color}1e;`;
+    hdr.style.cssText=`color:${color};background:color-mix(in srgb, ${color} 8%, #0c0f16);border-color:${color}25;`;
     hdr.innerHTML=`<span>${rang}</span><span class="rc">${grp.length}</span>`;
     el.appendChild(hdr);
     grp.forEach(m=>{
