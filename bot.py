@@ -40,6 +40,21 @@ COL_URLAUB     = 9   # I  (Urlaub)
 COL_STRIKES    = 11  # K  (Strikes)
 COL_CODENAME   = 12  # L  (Codename)
 
+VORLAGE_SHEET_NAME = "Vorlage-Rang"
+RANG_VORLAGE_ROW = {
+    "FIB-Director":          1,
+    "Director of Integrity": 2,
+    "Curator":               3,
+    "Chief of FIBCO":        4,
+    "Deputy Chief of FIBCO": 5,
+    "Supervisor":            6,
+    "Senior Mitglied":       7,
+    "Counsel General":       8,
+    "Mitglied":              9,
+    "FIBCO Veteran":         10,
+    "Trainee":               11,
+}
+
 # Berechtigungs-Spalten (N=14 bis AB=28)
 PERMISSIONS = [
     (14, "Der FIBCO über die Schultern schauen"),
@@ -221,6 +236,31 @@ def copy_row_format(spreadsheet_id: str, source_row: int, target_row: int, creds
         body={"requests": requests}
     ).execute()
 
+def copy_rang_format_bot(spreadsheet_id: str, rang: str, target_row: int, creds):
+    """Kopiert nur Spalte E Format aus Vorlage-Rang auf die Zielzeile."""
+    try:
+        service = build("sheets", "v4", credentials=creds)
+        meta    = service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
+        src_id  = None
+        dst_id  = None
+        for s in meta["sheets"]:
+            t = s["properties"]["title"]
+            if t == VORLAGE_SHEET_NAME: src_id = s["properties"]["sheetId"]
+            if t == SHEET_MITGLIEDER:   dst_id = s["properties"]["sheetId"]
+        if src_id is None or dst_id is None:
+            return
+        vorlage_row = RANG_VORLAGE_ROW.get(rang)
+        if not vorlage_row:
+            return
+        requests = [{"copyPaste": {
+            "source":      {"sheetId": src_id, "startRowIndex": vorlage_row-1, "endRowIndex": vorlage_row, "startColumnIndex": 4, "endColumnIndex": 5},
+            "destination": {"sheetId": dst_id, "startRowIndex": target_row-1,  "endRowIndex": target_row,  "startColumnIndex": 4, "endColumnIndex": 5},
+            "pasteType": "PASTE_FORMAT", "pasteOrientation": "NORMAL"
+        }}]
+        service.spreadsheets().batchUpdate(spreadsheetId=spreadsheet_id, body={"requests": requests}).execute()
+    except Exception as e:
+        print(f"⚠️ copy_rang_format_bot: {e}")
+
 # ─── Bot ───────────────────────────────────────────────────────────────────────
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
@@ -340,6 +380,13 @@ async def mitglied_hinzufuegen(
                 copy_row_format(SPREADSHEET_ID, format_quelle, zeile, creds)
             except Exception as fmt_err:
                 print(f"⚠️ Format Mitglied: {fmt_err}")
+
+        # Rang-Format aus Vorlage-Rang (nur Spalte E)
+        try:
+            creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)
+            copy_rang_format_bot(SPREADSHEET_ID, rang, zeile, creds)
+        except Exception as fmt_err:
+            print(f"⚠️ Rang-Format: {fmt_err}")
 
         # Trennzeile einfügen — nur wenn danach keine leere Zeile ist
         try:
@@ -482,6 +529,13 @@ async def rang_aendern(interaction: discord.Interaction, name: str, neuer_rang: 
                 copy_row_format(SPREADSHEET_ID, fmt_copy_from, zeile_neu, creds)
             except Exception as fe:
                 print(f"⚠️ Format: {fe}")
+
+        # Rang-Format aus Vorlage-Rang (nur Spalte E)
+        try:
+            creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)
+            copy_rang_format_bot(SPREADSHEET_ID, neuer_rang, zeile_neu, creds)
+        except Exception as fe:
+            print(f"⚠️ Rang-Format: {fe}")
 
         # Daten zurückschreiben
         formel_dn = f'=WENN(C{zeile_neu}=""; ""; WENNFEHLER(FILTER(Tabellenblatt37!E12:E295; Tabellenblatt37!B12:B295 = C{zeile_neu}); "/"))'
