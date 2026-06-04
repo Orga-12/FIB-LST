@@ -110,6 +110,7 @@ RANG_VORLAGE_ROW = {
     "Supervisor":            6,
     "Senior Mitglied":       7,
     "Counsel General":       8,
+    "Council General":       8,  # Alternative Schreibweise
     "Mitglied":              9,
     "FIBCO Veteran":         10,
     "Trainee":               11,
@@ -774,6 +775,29 @@ def api_active_users():
     online = [u for u, t in active_users.items() if (cutoff - t).seconds <= 300]
     return jsonify(online)
 
+import threading, time, urllib.request
+
+def keep_alive():
+    """Pingt den Server alle 14 Minuten um Render wachzuhalten."""
+    time.sleep(60)  # Warte 1 Min nach Start
+    url = os.getenv("RENDER_EXTERNAL_URL", "")
+    if not url:
+        return
+    while True:
+        try:
+            urllib.request.urlopen(f"{url}/api/ping", timeout=10)
+            print(f"[{datetime.now():%H:%M}] ✅ Keep-alive ping")
+        except Exception as e:
+            print(f"[{datetime.now():%H:%M}] ⚠️ Ping: {e}")
+        time.sleep(14 * 60)  # Alle 14 Minuten
+
+@app.route("/api/ping")
+def api_ping():
+    return jsonify({"ok": True, "time": datetime.now().isoformat()})
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
+    # Keep-alive Thread starten
+    t = threading.Thread(target=keep_alive, daemon=True)
+    t.start()
     app.run(host="0.0.0.0", port=port, debug=False)
