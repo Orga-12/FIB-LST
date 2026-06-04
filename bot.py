@@ -457,11 +457,29 @@ async def rang_aendern(interaction: discord.Interaction, name: str, neuer_rang: 
         # Neue Zeile einfügen
         sheet.insert_row([], zeile_neu)
 
-        # Format kopieren
-        if zeile_neu - 1 >= DATA_START_ROW:
+        # Format-Quelle suchen — letztes Mitglied der Zielgruppe
+        fmt_quelle = None
+        try:
+            alle_rows_pre = sheet.get_all_values()
+            for i in range(len(alle_rows_pre) - 1, DATA_START_ROW - 2, -1):
+                zr = alle_rows_pre[i][COL_RANKS-1].strip() if len(alle_rows_pre[i]) > COL_RANKS-1 else ""
+                zn = alle_rows_pre[i][COL_NAME-1].strip() if len(alle_rows_pre[i]) > COL_NAME-1 else ""
+                if zr == neuer_rang and zn:
+                    fmt_quelle = i + 1
+                    break
+        except Exception as fe:
+            print(f"⚠️ Format-Suche: {fe}")
+
+        # Zeile hat sich durch insert_row verschoben
+        if fmt_quelle:
+            fmt_copy_from = fmt_quelle + 1 if fmt_quelle >= zeile_neu else fmt_quelle
+        else:
+            fmt_copy_from = zeile_neu - 1
+
+        if fmt_copy_from >= DATA_START_ROW:
             try:
                 creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)
-                copy_row_format(SPREADSHEET_ID, zeile_neu - 1, zeile_neu, creds)
+                copy_row_format(SPREADSHEET_ID, fmt_copy_from, zeile_neu, creds)
             except Exception as fe:
                 print(f"⚠️ Format: {fe}")
 
